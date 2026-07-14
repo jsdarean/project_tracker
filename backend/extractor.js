@@ -112,10 +112,20 @@ function extractInvestment(text) {
 }
 
 function extractProjectManager(text) {
-  const m = text.match(/项目工程管理责任人\s*为\s*([^，。；\n]+)/);
-  if (m) return stripOrgPrefix(m[1]);
-  const m2 = text.match(/工程管理责任人\s*为\s*([^，。；\n]+)/);
-  if (m2) return stripOrgPrefix(m2[1]);
+  const patterns = [
+    // 正向：项目工程管理责任人为 XXX
+    /项目工程管理责任人\s*为\s*([^，。；\n]+)/,
+    /该项目责任人\s*为\s*([^，。；\n]+)/,
+    /项目责任人\s*为\s*([^，。；\n]+)/,
+    /工程管理责任人\s*为\s*([^，。；\n]+)/,
+    // 反向：XXX 为该项目责任人
+    /([^，。；\n]+)\s*为\s*该项目责任人/,
+    /([^，。；\n]+)\s*为\s*项目责任人/,
+  ];
+  for (const pat of patterns) {
+    const m = text.match(pat);
+    if (m) return stripOrgPrefix(m[1]);
+  }
   return '';
 }
 
@@ -129,6 +139,9 @@ function extractPlanningManager(text) {
 
 function stripOrgPrefix(str) {
   return str
+    .replace(/^你公司/, '')
+    .replace(/^你单位/, '')
+    .replace(/^贵公司/, '')
     .replace(/^省公司工程建设部/, '')
     .replace(/^省公司规划技术部/, '')
     .replace(/^省公司网络部/, '')
@@ -137,6 +150,14 @@ function stripOrgPrefix(str) {
     .replace(/^省公司/, '')
     .replace(/^.*工程建设部/, '')
     .replace(/^.*规划技术部/, '')
+    .trim();
+}
+
+function stripCompanyPrefix(str) {
+  return str
+    .replace(/^你公司/, '')
+    .replace(/^你单位/, '')
+    .replace(/^贵公司/, '')
     .trim();
 }
 
@@ -155,27 +176,55 @@ function splitDeptPerson(raw) {
   return { dept: '', person: raw.trim() };
 }
 
-// 解析责任部门/责任人（支持“责任部门为...”和“责任人为...”两种写法）
-function extractResponsibility(text, personLabels, deptLabels) {
+// 解析责任部门/责任人
+// 支持两种语序：
+//   1. 工程管理责任人为 省公司工程建设部谭旭辉
+//   2. 你公司朱勇为 该项目工程管理责任人
+function extractResponsibility(text, personLabels, deptLabels, recipient = '') {
   let dept = '';
   let person = '';
 
   if (deptLabels) {
     for (const label of deptLabels) {
-      const pat = new RegExp(escapeRegExp(label) + '\\s*为\\s*([^，。；\\n]+)');
-      const m = text.match(pat);
-      if (m) {
-        dept = m[1].trim();
+      const escaped = escapeRegExp(label);
+      // 正向：责任部门为 XXX
+      const pat1 = new RegExp(escaped + '\\s*为\\s*([^，。；\\n]+)');
+      const m1 = text.match(pat1);
+      if (m1) {
+        dept = stripCompanyPrefix(m1[1].trim());
+        break;
+      }
+      // 反向：XXX 为（该/此）责任部门
+      const pat2 = new RegExp('([^，。；\\n]+)\\s*为\\s*(?:该|此)?' + escaped);
+      const m2 = text.match(pat2);
+      if (m2) {
+        dept = stripCompanyPrefix(m2[1].trim());
         break;
       }
     }
   }
 
   for (const label of personLabels) {
-    const pat = new RegExp(escapeRegExp(label) + '\\s*为\\s*([^，。；\\n]+)');
-    const m = text.match(pat);
-    if (m) {
-      const raw = m[1].trim();
+    const escaped = escapeRegExp(label);
+    // 正向：责任人为 XXX
+    const pat1 = new RegExp(escaped + '\\s*为\\s*([^，。；\\n]+)');
+    const m1 = text.match(pat1);
+    if (m1) {
+      const raw = stripCompanyPrefix(m1[1].trim());
+      const split = splitDeptPerson(raw);
+      if (split.person) {
+        person = split.person;
+        if (!dept) dept = split.dept;
+      } else {
+        person = raw;
+      }
+      break;
+    }
+    // 反向：XXX 为（该/此）责任人
+    const pat2 = new RegExp('([^，。；\\n]+)\\s*为\\s*(?:该|此)?' + escaped);
+    const m2 = text.match(pat2);
+    if (m2) {
+      const raw = stripCompanyPrefix(m2[1].trim());
       const split = splitDeptPerson(raw);
       if (split.person) {
         person = split.person;
@@ -187,34 +236,44 @@ function extractResponsibility(text, personLabels, deptLabels) {
     }
   }
 
+  // 对于分公司项目，如果责任部门仍为空，则默认使用主送分公司作为责任部门
+  if (!dept && recipient && /分公司/.test(recipient)) {
+    dept = recipient;
+  }
+
   return { dept, person };
 }
 
-function extractResponsibilities(text) {
+function extractResponsibilities(text, recipient = '') {
   const investment = extractResponsibility(
     text,
     ['项目投资责任人', '投资责任人'],
-    ['项目投资责任部门', '投资责任部门']
+    ['项目投资责任部门', '投资责任部门'],
+    recipient
   );
   const engineering = extractResponsibility(
     text,
     ['项目工程管理责任人', '工程管理责任人'],
-    ['项目工程管理责任部门', '工程管理责任部门']
+    ['项目工程管理责任部门', '工程管理责任部门'],
+    recipient
   );
   const software = extractResponsibility(
     text,
     ['软件开发管理责任人', '软件管理责任人'],
-    ['软件开发管理责任部门', '软件管理责任部门']
+    ['软件开发管理责任部门', '软件管理责任部门'],
+    recipient
   );
   const maintenance = extractResponsibility(
     text,
     ['项目维护责任人', '维护责任人'],
-    ['项目维护责任部门', '维护责任部门']
+    ['项目维护责任部门', '维护责任部门'],
+    recipient
   );
   const procurement = extractResponsibility(
     text,
     ['项目合同采购责任人', '合同采购责任人'],
-    ['项目合同采购责任部门', '合同采购责任部门']
+    ['项目合同采购责任部门', '合同采购责任部门'],
+    recipient
   );
 
   return {
@@ -272,6 +331,7 @@ function extractConstructionUnit(text) {
     /工程建设单位为\s*([^，。；\n]+)/,
     /([^，。；\n]{2,20})为本工程建设单位/,
     /你公司为\s*本工程\s*建设单位\s*和\s*维护单位/,
+    /你公司为本工程建设单位/,
   ];
   for (const pat of patterns) {
     const m = text.match(pat);
@@ -470,11 +530,11 @@ function extract(text) {
   const amount = extractInvestment(normalized);
   const projectManager = extractProjectManager(normalized);
   const planningManager = extractPlanningManager(normalized);
-  const responsibilities = extractResponsibilities(normalized);
-  const decisionMethod = inferDecisionMethod(normalized);
-  const constructionUnit = extractConstructionUnit(normalized);
   // 主送单位识别需要保留原始换行，因此使用未 normalized 的 text
   const recipient = extractRecipient(text);
+  const responsibilities = extractResponsibilities(normalized, recipient);
+  const decisionMethod = inferDecisionMethod(normalized);
+  const constructionUnit = extractConstructionUnit(normalized);
   const buildLevel = inferBuildLevel(constructionUnit, recipient);
   const region = inferRegion(recipient, constructionUnit);
   const docNumber = extractDocNumber(normalized);
