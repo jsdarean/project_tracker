@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置 - 项目信息查询</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-mesh" aria-hidden="true"></div>
+    <div class="container hero-content">
+      <header class="page-header">
+        <div class="page-title">
+          <h1>设置</h1>
+          <p>本地归档与数据库连接配置</p>
+        </div>
+        <a href="index.html" class="btn-secondary settings-btn">返回查询</a>
+      </header>
+    </div>
+  </div>
+
+  <main class="container">
+    <section class="card settings-panel">
+      <h2>本地归档</h2>
+      <p class="settings-desc">设置后，插件点击“提交到数据库”会自动归档“表单下载”文件并生成字段 Excel。</p>
+      <div class="settings-row">
+        <label for="archiveFolder">归档文件夹</label>
+        <input type="text" id="archiveFolder" placeholder="例如 C:\Users\xxx\Desktop\项目批复文件">
+      </div>
+      <div class="settings-row">
+        <label for="downloadDir">浏览器默认下载目录</label>
+        <input type="text" id="downloadDir" placeholder="例如 C:\Users\xxx\Downloads">
+      </div>
+
+      <h2 style="margin-top: var(--space-xl);">数据库</h2>
+      <p class="settings-desc">网页与插件共用同一套数据库配置。</p>
+      <div class="settings-row">
+        <label for="dbHost">主机</label>
+        <input type="text" id="dbHost" placeholder="localhost">
+      </div>
+      <div class="settings-row">
+        <label for="dbPort">端口</label>
+        <input type="number" id="dbPort" placeholder="3306">
+      </div>
+      <div class="settings-row">
+        <label for="dbUser">用户名</label>
+        <input type="text" id="dbUser" placeholder="root">
+      </div>
+      <div class="settings-row">
+        <label for="dbPassword">密码</label>
+        <input type="password" id="dbPassword" placeholder="">
+      </div>
+      <div class="settings-row">
+        <label for="dbName">数据库名</label>
+        <input type="text" id="dbName" placeholder="project_tracker">
+      </div>
+      <div class="settings-row">
+        <label></label>
+        <button type="button" id="testDbBtn" class="btn-secondary">测试连接</button>
+        <span id="dbTestStatus" class="settings-status"></span>
+      </div>
+
+      <div class="settings-actions">
+        <button type="button" id="saveSettingsBtn" class="btn-primary">保存设置</button>
+        <span id="settingsStatus" class="settings-status"></span>
+      </div>
+    </section>
+  </main>
+
+  <script src="settings.js"></script>
+</body>
+</html>

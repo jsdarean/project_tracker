@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>项目信息一键提取</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="header">
+    <h1>项目信息一键提取</h1>
+    <button id="extractBtn" class="btn-primary">重新提取当前页</button>
+  </div>
+
+  <div id="status" class="status"></div>
+  <div id="toast" class="toast"></div>
+
+  <div class="manual-box">
+    <details>
+      <summary>未提取到？手动粘贴正文</summary>
+      <div class="field">
+        <label for="manualText">立项批复正文</label>
+        <textarea id="manualText" rows="6" placeholder="将网页上的立项批复正文复制粘贴到这里，然后点击提取"></textarea>
+      </div>
+      <button type="button" id="manualExtractBtn" class="btn-secondary">从粘贴文本提取</button>
+    </details>
+  </div>
+
+  <form id="projectForm">
+    <fieldset>
+      <legend>基础信息</legend>
+      <div class="field">
+        <label for="source_url">来源 URL</label>
+        <input type="text" id="source_url" name="source_url" readonly>
+      </div>
+      <div class="field">
+        <label for="doc_number">立项批复发文文号</label>
+        <input type="text" id="doc_number" name="doc_number">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>项目分类</legend>
+      <div class="grid-3">
+        <div class="field">
+          <label for="category">专业类别</label>
+          <input type="text" id="category" name="category">
+        </div>
+        <div class="field">
+          <label for="project_set">项目集</label>
+          <input type="text" id="project_set" name="project_set">
+        </div>
+        <div class="field">
+          <label for="project_subset">项目子集</label>
+          <input type="text" id="project_subset" name="project_subset">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>项目标识</legend>
+      <div class="grid-2">
+        <div class="field">
+          <label for="project_code">项目编码</label>
+          <input type="text" id="project_code" name="project_code">
+        </div>
+        <div class="field">
+          <label for="project_name">项目名称</label>
+          <input type="text" id="project_name" name="project_name">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>日期</legend>
+      <div class="grid-3">
+        <div class="field">
+          <label for="approval_date">立项批复日期</label>
+          <input type="date" id="approval_date" name="approval_date">
+        </div>
+        <div class="field">
+          <label for="design_date">设计批复日期</label>
+          <input type="text" id="design_date" name="design_date" placeholder="手工补录">
+        </div>
+        <div class="field">
+          <label for="completion_date">竣工批复日期</label>
+          <input type="text" id="completion_date" name="completion_date" placeholder="手工补录">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>责任人</legend>
+      <div class="grid-2">
+        <div class="field">
+          <label for="project_manager">工程责任人</label>
+          <input type="text" id="project_manager" name="project_manager">
+        </div>
+        <div class="field">
+          <label for="planning_manager">规划责任人</label>
+          <input type="text" id="planning_manager" name="planning_manager">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>责任部门/责任人（来自页面）</legend>
+      <div class="grid-2">
+        <div class="field">
+          <label for="investment_dept">项目投资责任部门</label>
+          <input type="text" id="investment_dept" name="investment_dept">
+        </div>
+        <div class="field">
+          <label for="investment_person">项目投资责任人</label>
+          <input type="text" id="investment_person" name="investment_person">
+        </div>
+        <div class="field">
+          <label for="engineering_dept">工程管理责任部门</label>
+          <input type="text" id="engineering_dept" name="engineering_dept">
+        </div>
+        <div class="field">
+          <label for="engineering_person">工程管理责任人</label>
+          <input type="text" id="engineering_person" name="engineering_person">
+        </div>
+        <div class="field">
+          <label for="software_dept">软件开发管理责任部门</label>
+          <input type="text" id="software_dept" name="software_dept">
+        </div>
+        <div class="field">
+          <label for="software_person">软件开发管理责任人</label>
+          <input type="text" id="software_person" name="software_person">
+        </div>
+        <div class="field">
+          <label for="maintenance_dept">项目维护责任部门</label>
+          <input type="text" id="maintenance_dept" name="maintenance_dept">
+        </div>
+        <div class="field">
+          <label for="maintenance_person">项目维护责任人</label>
+          <input type="text" id="maintenance_person" name="maintenance_person">
+        </div>
+        <div class="field">
+          <label for="procurement_dept">项目合同采购责任部门</label>
+          <input type="text" id="procurement_dept" name="procurement_dept">
+        </div>
+        <div class="field">
+          <label for="procurement_person">项目合同采购责任人</label>
+          <input type="text" id="procurement_person" name="procurement_person">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>金额</legend>
+      <div class="grid-3">
+        <div class="field">
+          <label for="approval_amount">立项金额（万元）</label>
+          <input type="number" step="0.0001" id="approval_amount" name="approval_amount">
+        </div>
+        <div class="field">
+          <label for="amount_note">金额备注</label>
+          <input type="text" id="amount_note" name="amount_note">
+        </div>
+        <div class="field">
+          <label for="change_status">变化情况</label>
+          <input type="text" id="change_status" name="change_status">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>预算相关（通常需手工补录）</legend>
+      <div class="grid-3">
+        <div class="field">
+          <label for="mid_year_budget">年中预算决策情况</label>
+          <input type="text" id="mid_year_budget" name="mid_year_budget">
+        </div>
+        <div class="field">
+          <label for="budget_increase">预算增加情况</label>
+          <input type="text" id="budget_increase" name="budget_increase">
+        </div>
+        <div class="field">
+          <label for="undecided_supplement">未决策预算追加</label>
+          <input type="text" id="undecided_supplement" name="undecided_supplement">
+        </div>
+        <div class="field">
+          <label for="decided_budget">已决策预算</label>
+          <input type="text" id="decided_budget" name="decided_budget">
+        </div>
+        <div class="field">
+          <label for="decided_in_project">其中项目已决策</label>
+          <input type="text" id="decided_in_project" name="decided_in_project">
+        </div>
+        <div class="field">
+          <label for="undecided_in_project">其中项目未决策</label>
+          <input type="text" id="undecided_in_project" name="undecided_in_project">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>其他</legend>
+      <div class="grid-3">
+        <div class="field">
+          <label for="build_level">省建/市建/一干</label>
+          <select id="build_level" name="build_level">
+            <option value="">请选择</option>
+            <option value="省建">省建</option>
+            <option value="市建">市建</option>
+            <option value="一干">一干</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="listed">上市/非上市</label>
+          <select id="listed" name="listed">
+            <option value="">请选择</option>
+            <option value="上市">上市</option>
+            <option value="非上市">非上市</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="is_rnd">是否研发项目</label>
+          <select id="is_rnd" name="is_rnd">
+            <option value="">请选择</option>
+            <option value="研发">研发</option>
+            <option value="非研发">非研发</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="region">地区</label>
+          <input type="text" id="region" name="region">
+        </div>
+        <div class="field">
+          <label for="decision_method">决策方式</label>
+          <input type="text" id="decision_method" name="decision_method">
+        </div>
+      </div>
+      <div class="field">
+        <label for="remarks">备注</label>
+        <textarea id="remarks" name="remarks" rows="2"></textarea>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>执行金额（通常需手工补录）</legend>
+      <div class="grid-3">
+        <div class="field">
+          <label for="estimated_actual">预计实际发生金额</label>
+          <input type="number" step="0.0001" id="estimated_actual" name="estimated_actual">
+        </div>
+        <div class="field">
+          <label for="releasable_amount">可释放金额</label>
+          <input type="number" step="0.0001" id="releasable_amount" name="releasable_amount">
+        </div>
+        <div class="field">
+          <label for="design_amount">设计金额</label>
+          <input type="number" step="0.0001" id="design_amount" name="design_amount">
+        </div>
+        <div class="field">
+          <label for="completion_amount">竣工金额</label>
+          <input type="number" step="0.0001" id="completion_amount" name="completion_amount">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>原始正文</legend>
+      <div class="field">
+        <label for="extracted_text">立项批复正文</label>
+        <textarea id="extracted_text" name="extracted_text" rows="6" readonly></textarea>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button type="button" id="saveDraftBtn" class="btn-secondary">保存为草稿</button>
+      <button type="button" id="submitBtn" class="btn-primary">提交到数据库</button>
+    </div>
+  </form>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

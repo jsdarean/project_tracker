@@ -1,0 +1,18 @@
+# 依赖目录
+backend/node_modules
+.venv
+
+# 环境变量与本地敏感配置
+.env
+backend/settings.json
+
+# 测试/样例数据（可能含敏感项目信息）
+testfiles/
+
+# 生成分发包与截图
+dist/
+docs/screenshots/
+
+# 系统文件
+.DS_Store
+Thumbs.db

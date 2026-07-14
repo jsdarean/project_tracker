@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>项目信息查询</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-mesh" aria-hidden="true"></div>
+    <div class="container hero-content">
+      <header class="page-header">
+        <div class="page-title">
+          <h1>项目信息查询</h1>
+          <p>本机 MySQL <code>project_tracker.projects</code> 表中的立项批复数据</p>
+        </div>
+        <a href="settings.html" class="btn-secondary settings-btn">设置</a>
+      </header>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="toolbar card">
+      <input type="text" id="searchInput" placeholder="搜索项目编码、项目名称、发文文号…">
+      <select id="statusFilter">
+        <option value="">全部状态</option>
+        <option value="saved">已提交</option>
+        <option value="draft">草稿</option>
+      </select>
+      <button id="refreshBtn" class="btn-primary">刷新</button>
+      <button id="exportBtn" class="btn-secondary">导出 Excel</button>
+    </div>
+
+    <div id="loading" class="loading card">加载中...</div>
+    <div id="error" class="error card" style="display: none;"></div>
+
+    <div class="table-wrapper card">
+      <table id="projectsTable">
+        <thead>
+          <tr id="headerRow"></tr>
+        </thead>
+        <tbody>
+          <!-- 动态填充 -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button id="prevBtn" class="btn-secondary">上一页</button>
+      <span id="pageInfo">第 1 页</span>
+      <button id="nextBtn" class="btn-secondary">下一页</button>
+    </div>
+  </main>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

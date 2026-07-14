@@ -1,0 +1,384 @@
+const API_BASE = window.location.origin;
+
+let currentPage = 1;
+const pageSize = 20;
+let total = 0;
+let currentRows = [];
+const selectedIds = new Set();
+
+// 列表默认展示的字段（顺序），_select / _action 为非数据库字段
+const displayColumns = [
+  '_select',
+  'doc_number',
+  'category',
+  'project_code',
+  'project_name',
+  'approval_date',
+  'approval_amount',
+  'project_set',
+  'project_subset',
+  'project_manager',
+  'investment_dept',
+  'investment_person',
+  'engineering_dept',
+  'engineering_person',
+  'software_dept',
+  'software_person',
+  'maintenance_dept',
+  'maintenance_person',
+  'procurement_dept',
+  'procurement_person',
+  'build_level',
+  'listed',
+  'is_rnd',
+  'region',
+  'decision_method'
+];
+
+// 字段 -> 中文注释
+let columnComments = {};
+
+const loadingEl = document.getElementById('loading');
+const errorEl = document.getElementById('error');
+const tableHeadRow = document.getElementById('headerRow');
+const tableBody = document.querySelector('#projectsTable tbody');
+const searchInput = document.getElementById('searchInput');
+const statusFilter = document.getElementById('statusFilter');
+const refreshBtn = document.getElementById('refreshBtn');
+const exportBtn = document.getElementById('exportBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const pageInfo = document.getElementById('pageInfo');
+let selectAllCheckbox = null;
+
+async function init() {
+  await loadColumns();
+  renderHeader();
+  selectAllCheckbox = document.getElementById('selectAll');
+  bindSelectAll();
+  await loadData();
+}
+
+async function loadColumns() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/projects/columns`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || '加载字段注释失败');
+    columnComments = {};
+    for (const col of result.data) {
+      columnComments[col.field] = col.comment || col.field;
+    }
+  } catch (err) {
+    console.error('加载字段注释失败:', err);
+    // 失败时使用字段名兜底
+    for (const f of displayColumns) {
+      if (!columnComments[f]) columnComments[f] = f;
+    }
+  }
+}
+
+function renderHeader() {
+  tableHeadRow.innerHTML = displayColumns.map(field => {
+    if (field === '_select') return '<th><input type="checkbox" id="selectAll" title="全选本页"></th>';
+    if (field === '_action') return '<th>操作</th>';
+    return `<th>${escapeHtml(columnComments[field] || field)}</th>`;
+  }).join('');
+}
+
+function bindSelectAll() {
+  selectAllCheckbox = document.getElementById('selectAll');
+  if (!selectAllCheckbox) return;
+  selectAllCheckbox.addEventListener('change', () => {
+    const checked = selectAllCheckbox.checked;
+    for (const row of currentRows) {
+      const id = String(row.id);
+      if (checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+    }
+    renderTable(currentRows);
+  });
+}
+
+async function loadData() {
+  showLoading(true);
+  hideError();
+  try {
+    const keyword = searchInput.value.trim();
+    const status = statusFilter.value;
+    const params = new URLSearchParams({ page: currentPage, pageSize });
+    if (keyword) params.append('keyword', keyword);
+    if (status) params.append('status', status);
+
+    const resp = await fetch(`${API_BASE}/api/projects?${params.toString()}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || '加载失败');
+
+    total = result.total || 0;
+    renderTable(result.data || []);
+    updatePagination();
+  } catch (err) {
+    showError('加载失败：' + err.message);
+    tableBody.innerHTML = '';
+  } finally {
+    showLoading(false);
+  }
+}
+
+function renderTable(rows) {
+  currentRows = rows;
+  tableBody.innerHTML = '';
+  if (rows.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="${displayColumns.length}" class="empty">暂无数据</td></tr>`;
+    updateSelectAllState();
+    return;
+  }
+
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = displayColumns.map(field => renderCell(field, row)).join('');
+    tableBody.appendChild(tr);
+  }
+
+  updateSelectAllState();
+
+  // 绑定删除事件
+  tableBody.querySelectorAll('.btn-small').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      if (!confirm(`确定删除记录 ${id} 吗？`)) return;
+      try {
+        const resp = await fetch(`${API_BASE}/api/projects/${id}`, { method: 'DELETE' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        await loadData();
+      } catch (err) {
+        alert('删除失败：' + err.message);
+      }
+    });
+  });
+}
+
+function renderCell(field, row) {
+  switch (field) {
+    case '_select':
+      return `<td><input type="checkbox" class="row-select" data-id="${row.id}" ${selectedIds.has(String(row.id)) ? 'checked' : ''}></td>`;
+    case 'doc_number':
+      return `<td>${escapeHtml(row.doc_number || '')}</td>`;
+    case 'category':
+      return `<td>${escapeHtml(row.category || '')}</td>`;
+    case 'project_code':
+      return `<td><a href="#" class="open-folder" data-code="${escapeHtml(row.project_code || '')}" data-name="${escapeHtml(row.project_name || '')}">${escapeHtml(row.project_code || '')}</a></td>`;
+    case 'project_name':
+      return `<td title="${escapeHtml(row.project_name || '')}">${escapeHtml(truncate(row.project_name, 40))}</td>`;
+    case 'approval_date':
+      return `<td>${formatDate(row.approval_date)}</td>`;
+    case 'approval_amount':
+      return `<td class="amount">${formatNumber(row.approval_amount)}</td>`;
+    case 'project_set':
+      return `<td>${escapeHtml(row.project_set || '')}</td>`;
+    case 'project_subset':
+      return `<td>${escapeHtml(row.project_subset || '')}</td>`;
+    case 'project_manager':
+      return `<td>${escapeHtml(row.project_manager || '')}</td>`;
+    case 'investment_dept':
+      return `<td>${escapeHtml(row.investment_dept || '')}</td>`;
+    case 'investment_person':
+      return `<td>${escapeHtml(row.investment_person || '')}</td>`;
+    case 'engineering_dept':
+      return `<td>${escapeHtml(row.engineering_dept || '')}</td>`;
+    case 'engineering_person':
+      return `<td>${escapeHtml(row.engineering_person || '')}</td>`;
+    case 'software_dept':
+      return `<td>${escapeHtml(row.software_dept || '')}</td>`;
+    case 'software_person':
+      return `<td>${escapeHtml(row.software_person || '')}</td>`;
+    case 'maintenance_dept':
+      return `<td>${escapeHtml(row.maintenance_dept || '')}</td>`;
+    case 'maintenance_person':
+      return `<td>${escapeHtml(row.maintenance_person || '')}</td>`;
+    case 'procurement_dept':
+      return `<td>${escapeHtml(row.procurement_dept || '')}</td>`;
+    case 'procurement_person':
+      return `<td>${escapeHtml(row.procurement_person || '')}</td>`;
+    case 'build_level':
+      return `<td>${escapeHtml(row.build_level || '')}</td>`;
+    case 'listed':
+      return `<td>${escapeHtml(row.listed || '')}</td>`;
+    case 'is_rnd':
+      return `<td>${escapeHtml(row.is_rnd || '')}</td>`;
+    case 'region':
+      return `<td>${escapeHtml(row.region || '')}</td>`;
+    case 'decision_method':
+      return `<td title="${escapeHtml(row.decision_method || '')}">${escapeHtml(truncate(row.decision_method, 20))}</td>`;
+    case 'status':
+      return `<td><span class="badge badge-${row.status}">${row.status === 'saved' ? '已提交' : '草稿'}</span></td>`;
+    case '_action':
+      return `<td><button class="btn-small" data-id="${row.id}">删除</button></td>`;
+    default:
+      return `<td>${escapeHtml(row[field] ?? '')}</td>`;
+  }
+}
+
+function updateSelectAllState() {
+  if (!selectAllCheckbox) return;
+  const ids = currentRows.map(r => String(r.id));
+  if (ids.length === 0) {
+    selectAllCheckbox.checked = false;
+    selectAllCheckbox.indeterminate = false;
+    return;
+  }
+  const checkedCount = ids.filter(id => selectedIds.has(id)).length;
+  selectAllCheckbox.checked = checkedCount === ids.length;
+  selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < ids.length;
+}
+
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel 导出库加载失败，请检查网络后重试。');
+    return;
+  }
+
+  const checkedRows = currentRows.filter(r => selectedIds.has(String(r.id)));
+  const rowsToExport = checkedRows.length > 0 ? checkedRows : currentRows;
+
+  if (rowsToExport.length === 0) {
+    alert('当前没有可导出的数据。');
+    return;
+  }
+
+  const exportFields = displayColumns.filter(f => f !== '_select' && f !== '_action' && f !== 'status');
+  const headers = exportFields.map(f => columnComments[f] || f);
+  const aoa = [headers];
+
+  for (const row of rowsToExport) {
+    aoa.push(exportFields.map(f => {
+      const val = row[f];
+      // 日期字段统一格式化为 YYYY-MM-DD
+      if (f.endsWith('_date') && val) {
+        return formatDate(val);
+      }
+      return val ?? '';
+    }));
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '项目信息');
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const fileName = `项目信息_${dateStr}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+}
+
+function updatePagination() {
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  pageInfo.textContent = `第 ${currentPage} / ${totalPages} 页，共 ${total} 条`;
+  prevBtn.disabled = currentPage <= 1;
+  nextBtn.disabled = currentPage >= totalPages;
+}
+
+function showLoading(show) {
+  loadingEl.style.display = show ? 'block' : 'none';
+}
+
+function showError(msg) {
+  errorEl.textContent = msg;
+  errorEl.style.display = 'block';
+}
+
+function hideError() {
+  errorEl.style.display = 'none';
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function truncate(str, len) {
+  if (!str) return '';
+  return str.length > len ? str.slice(0, len) + '...' : str;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toISOString().slice(0, 10);
+}
+
+function formatNumber(num) {
+  if (num === null || num === undefined || num === '') return '';
+  return Number(num).toLocaleString('zh-CN');
+}
+
+// 事件绑定
+refreshBtn.addEventListener('click', () => {
+  currentPage = 1;
+  loadData();
+});
+
+tableBody.addEventListener('click', async (e) => {
+  const link = e.target.closest('.open-folder');
+  if (!link) return;
+  e.preventDefault();
+  const code = link.dataset.code;
+  const name = link.dataset.name;
+  try {
+    const resp = await fetch(`${API_BASE}/api/open-folder`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_code: code, project_name: name })
+    });
+    if (!resp.ok) {
+      const result = await resp.json().catch(() => ({}));
+      alert('打开文件夹失败：' + (result.error || resp.statusText));
+    }
+  } catch (err) {
+    alert('打开文件夹失败：' + err.message);
+  }
+});
+
+exportBtn.addEventListener('click', exportToExcel);
+
+tableBody.addEventListener('change', (e) => {
+  if (e.target.classList.contains('row-select')) {
+    const id = e.target.getAttribute('data-id');
+    if (e.target.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    updateSelectAllState();
+  }
+});
+
+searchInput.addEventListener('input', () => {
+  currentPage = 1;
+  loadData();
+});
+
+statusFilter.addEventListener('change', () => {
+  currentPage = 1;
+  loadData();
+});
+
+prevBtn.addEventListener('click', () => {
+  if (currentPage > 1) {
+    currentPage--;
+    loadData();
+  }
+});
+
+nextBtn.addEventListener('click', () => {
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  if (currentPage < totalPages) {
+    currentPage++;
+    loadData();
+  }
+});
+
+// 初始加载
+init();
