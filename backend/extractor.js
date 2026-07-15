@@ -32,6 +32,8 @@ function normalizeText(text) {
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .replace(/\s+/g, ' ')
+    // 批复正文中常有换行/空格把中文标签拆开（如“项目投资\n责任人”），合并相邻汉字间的空白
+    .replace(/([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])/g, '$1$2')
     .trim();
 }
 

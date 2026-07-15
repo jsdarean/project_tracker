@@ -65,7 +65,30 @@ async function finishOrganize() {
 
 async function handleOrganizeDownload({ project_code, project_name, fields }) {
   console.log('[background.js] 开始自动归档:', project_code, project_name);
-  return new Promise(async (resolve, reject) => {
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab) throw new Error('未找到当前活动标签页');
+
+  // 临时屏蔽“表单下载”按钮逻辑，直接走 PDF 打印归档
+  // let clickResp = null;
+  // try {
+  //   clickResp = await chrome.tabs.sendMessage(tab.id, { type: 'CLICK_DOWNLOAD_BUTTON' });
+  //   console.log('[background.js] 表单下载点击结果:', clickResp);
+  // } catch (err) {
+  //   clickResp = { success: false, error: err.message };
+  //   console.warn('[background.js] 点击表单下载通信失败:', err.message);
+  // }
+  // if (clickResp && clickResp.success) {
+  //   return waitForDownloadAndOrganize({ project_code, project_name, fields });
+  // }
+
+  // 直接通过打印为 PDF 归档
+  console.log('[background.js] 直接走 PDF 打印归档');
+  return printAndOrganizePdf(tab.id, project_code, project_name, fields);
+}
+
+function waitForDownloadAndOrganize({ project_code, project_name, fields }) {
+  return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       if (pendingOrganize && pendingOrganize.resolve === resolve) {
         pendingOrganize = null;
@@ -74,21 +97,192 @@ async function handleOrganizeDownload({ project_code, project_name, fields }) {
     }, 30000);
 
     pendingOrganize = { project_code, project_name, fields, resolve, reject, timeout };
+  });
+}
 
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab) throw new Error('未找到当前活动标签页');
-      console.log('[background.js] 发送点击命令到标签页:', tab.id);
-      const resp = await chrome.tabs.sendMessage(tab.id, { type: 'CLICK_DOWNLOAD_BUTTON' });
-      console.log('[background.js] 点击结果:', resp);
-      if (!resp || !resp.success) {
-        throw new Error(resp?.error || '点击“表单下载”按钮失败');
+// 使用 Chrome DevTools Protocol 将当前页面打印为 PDF
+async function printTabToPdf(tabId) {
+  await chrome.debugger.attach({ tabId }, '1.3');
+  try {
+    await chrome.debugger.sendCommand({ tabId }, 'Page.enable');
+    const result = await chrome.debugger.sendCommand({ tabId }, 'Page.printToPDF', {
+      printBackground: true,   // 对应“更多图形/背景图形”
+      preferCSSPageSize: false,
+      displayHeaderFooter: false,
+      landscape: false,
+      paperWidth: 8.27,        // A4
+      paperHeight: 11.69
+    });
+    return result.data; // base64 字符串
+  } finally {
+    await chrome.debugger.detach({ tabId }).catch(() => {});
+  }
+}
+
+function downloadPdfFromBase64(base64Data, filename) {
+  const dataUrl = 'data:application/pdf;base64,' + base64Data;
+  return new Promise((resolve, reject) => {
+    chrome.downloads.download({ url: dataUrl, filename, saveAs: false }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve(downloadId);
       }
-    } catch (err) {
-      pendingOrganize = null;
-      clearTimeout(timeout);
-      reject(err);
+    });
+  });
+}
+
+// 在页面上下文中执行：点击“展开”、“查看更多信息”，并等待展开完成
+// 注意：此函数会被 chrome.scripting.executeScript 序列化到页面中运行，不能引用外部变量
+function clickExpandButtonsInPage() {
+  function isVisible(el) {
+    if (!el) return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function findElementByText(text) {
+    const candidates = Array.from(document.querySelectorAll('button, a, div, span, i, label, [class*="collapse"]'));
+    for (const el of candidates) {
+      if ((el.textContent || '').trim() === text && isVisible(el)) return el;
     }
+    for (const el of candidates) {
+      if ((el.textContent || '').includes(text) && isVisible(el)) return el;
+    }
+    return null;
+  }
+
+  function findCollapseContainer(text) {
+    const collapses = Array.from(document.querySelectorAll('.collapse, [class*="collapse-text"], [class*="collapse_btn"], [class*="collapse-btn"]'));
+    for (const el of collapses) {
+      if ((el.textContent || '').trim() === text && isVisible(el)) return el;
+    }
+    const all = Array.from(document.querySelectorAll('button, a, div, span, i, label, [class*="collapse"]'));
+    for (const el of all) {
+      if ((el.textContent || '').trim() === text && isVisible(el)) {
+        const container = el.closest('.collapse, [class*="collapse-wrapper"], [class*="collapse-box"]');
+        if (container) return container;
+        return el;
+      }
+    }
+    return null;
+  }
+
+  function clickElement(el) {
+    if (!el) return false;
+    const clickable = el.closest('button, a, div[role="button"], span[role="button"]') || el;
+    const rect = clickable.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const eventInit = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      screenX: x + window.screenX,
+      screenY: y + window.screenY
+    };
+    clickable.dispatchEvent(new MouseEvent('mousedown', eventInit));
+    clickable.dispatchEvent(new MouseEvent('mouseup', eventInit));
+    if (typeof clickable.click === 'function') {
+      clickable.click();
+    } else {
+      clickable.dispatchEvent(new MouseEvent('click', eventInit));
+    }
+    return true;
+  }
+
+  function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function waitForExpansionComplete(maxAttempts = 30, interval = 300) {
+    for (let i = 0; i < maxAttempts; i++) {
+      const stillCollapsed = findElementByText('展开') || findElementByText('查看更多信息');
+      if (!stillCollapsed) {
+        console.log('[page] 页面已全部展开');
+        return true;
+      }
+      await wait(interval);
+    }
+    console.log('[page] 等待页面展开完成超时');
+    return false;
+  }
+
+  return (async () => {
+    const labels = ['展开', '查看更多信息'];
+    const clicked = [];
+    for (const text of labels) {
+      let el = findCollapseContainer(text);
+      if (!el) el = findElementByText(text);
+      if (el) {
+        console.log('[page] 点击“' + text + '”容器');
+        clickElement(el);
+        clicked.push(text);
+      }
+    }
+    if (clicked.length > 0) {
+      console.log('[page] 等待页面展开完成...');
+      await waitForExpansionComplete();
+      await wait(1000);
+    }
+    console.log('[page] 已点击展开按钮:', clicked);
+    return { success: true, clicked };
+  })();
+}
+
+async function printAndOrganizePdf(tabId, project_code, project_name, fields) {
+  // 1. 先点击页面上的“展开”、“查看更多信息”等按钮（直接注入页面执行，避免 content script 消息丢失）
+  let expandResp = { success: true, clicked: [] };
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: clickExpandButtonsInPage
+    });
+    expandResp = results[0]?.result || { success: true, clicked: [] };
+    console.log('[background.js] 展开按钮点击结果:', expandResp);
+  } catch (err) {
+    console.warn('[background.js] 点击展开按钮失败:', err.message);
+  }
+
+  // 2. 等待页面展开/加载完成
+  await new Promise(r => setTimeout(r, 1500));
+
+  // 3. 打印为 PDF
+  let pdfBase64;
+  try {
+    pdfBase64 = await printTabToPdf(tabId);
+    console.log('[background.js] PDF 生成成功，大小:', Math.round(pdfBase64.length * 0.75 / 1024), 'KB');
+  } catch (err) {
+    throw new Error('打印 PDF 失败：' + err.message);
+  }
+
+  // 4. 将 PDF 下载到浏览器默认下载目录（临时文件名，后续由后端移动到归档目录）
+  const safeName = (s) => String(s || '').replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim();
+  const safeCode = safeName(project_code);
+  const safeName2 = safeName(project_name);
+  const tempFileName = safeName2
+    ? `${safeCode}-${safeName2}-立项批复（发文）-web-print.pdf`
+    : `${safeCode}-立项批复（发文）-web-print.pdf`;
+
+  const downloadId = await downloadPdfFromBase64(pdfBase64, tempFileName);
+  console.log('[background.js] PDF 下载任务已创建:', downloadId);
+
+  // 5. 等待下载完成并归档
+  return waitForPdfDownloadAndOrganize({ project_code, project_name, fields, downloadId });
+}
+
+function waitForPdfDownloadAndOrganize({ project_code, project_name, fields, downloadId }) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      if (pendingOrganize && pendingOrganize.resolve === resolve) {
+        pendingOrganize = null;
+      }
+      reject(new Error('等待 PDF 下载超时'));
+    }, 30000);
+
+    pendingOrganize = { project_code, project_name, fields, resolve, reject, timeout, downloadId };
   });
 }
 
