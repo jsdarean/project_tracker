@@ -43,11 +43,8 @@ function renderExportFields() {
     checkbox.type = 'checkbox';
     checkbox.value = col.field;
     checkbox.checked = currentExportFields.includes(col.field);
-    const text = document.createElement('span');
-    text.className = 'export-field-text';
-    text.textContent = col.comment || col.field;
     label.appendChild(checkbox);
-    label.appendChild(text);
+    label.appendChild(document.createTextNode(' ' + (col.comment || col.field)));
     exportFieldsEl.appendChild(label);
   }
 }
