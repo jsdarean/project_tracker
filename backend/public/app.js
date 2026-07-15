@@ -46,6 +46,7 @@ const searchInput = document.getElementById('searchInput');
 const statusFilter = document.getElementById('statusFilter');
 const refreshBtn = document.getElementById('refreshBtn');
 const exportBtn = document.getElementById('exportBtn');
+const editBtn = document.getElementById('editBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
 const pageInfo = document.getElementById('pageInfo');
@@ -345,6 +346,19 @@ tableBody.addEventListener('click', async (e) => {
 });
 
 exportBtn.addEventListener('click', exportToExcel);
+
+editBtn.addEventListener('click', () => {
+  const ids = Array.from(selectedIds);
+  if (ids.length === 0) {
+    alert('请先勾选一行记录后再点击“变更”。');
+    return;
+  }
+  if (ids.length > 1) {
+    alert('一次只能变更一条记录，请只勾选一行。');
+    return;
+  }
+  window.location.href = `edit.html?id=${ids[0]}`;
+});
 
 tableBody.addEventListener('change', (e) => {
   if (e.target.classList.contains('row-select')) {
