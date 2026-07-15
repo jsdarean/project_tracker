@@ -5,6 +5,7 @@ const pageSize = 20;
 let total = 0;
 let currentRows = [];
 const selectedIds = new Set();
+let exportFields = [];
 
 // 列表默认展示的字段（顺序），_select / _action 为非数据库字段
 const displayColumns = [
@@ -54,10 +55,25 @@ let selectAllCheckbox = null;
 
 async function init() {
   await loadColumns();
+  await loadExportSettings();
   renderHeader();
   selectAllCheckbox = document.getElementById('selectAll');
   bindSelectAll();
   await loadData();
+}
+
+async function loadExportSettings() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/settings`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    if (result.success && Array.isArray(result.data.export_fields)) {
+      exportFields = result.data.export_fields;
+    }
+  } catch (err) {
+    console.error('加载导出字段设置失败:', err);
+    exportFields = [];
+  }
 }
 
 async function loadColumns() {
@@ -248,12 +264,14 @@ function exportToExcel() {
     return;
   }
 
-  const exportFields = displayColumns.filter(f => f !== '_select' && f !== '_action' && f !== 'status');
-  const headers = exportFields.map(f => columnComments[f] || f);
+  const fieldsToExport = exportFields.length > 0
+    ? exportFields
+    : displayColumns.filter(f => f !== '_select' && f !== '_action' && f !== 'status');
+  const headers = fieldsToExport.map(f => columnComments[f] || f);
   const aoa = [headers];
 
   for (const row of rowsToExport) {
-    aoa.push(exportFields.map(f => {
+    aoa.push(fieldsToExport.map(f => {
       const val = row[f];
       // 日期字段统一格式化为 YYYY-MM-DD
       if (f.endsWith('_date') && val) {

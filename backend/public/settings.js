@@ -11,9 +11,52 @@ const testDbBtn = document.getElementById('testDbBtn');
 const dbTestStatusEl = document.getElementById('dbTestStatus');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const settingsStatusEl = document.getElementById('settingsStatus');
+const exportFieldsEl = document.getElementById('exportFields');
+
+let columnMeta = [];
+let currentExportFields = [];
+
+async function loadColumns() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/projects/columns`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || '加载字段注释失败');
+    columnMeta = (result.data || []).filter(c =>
+      !['id', 'created_at', 'updated_at', 'status'].includes(c.field)
+    );
+  } catch (err) {
+    console.error('加载字段注释失败:', err);
+  }
+}
+
+function renderExportFields() {
+  exportFieldsEl.innerHTML = '';
+  if (columnMeta.length === 0) {
+    exportFieldsEl.textContent = '加载字段列表失败，请刷新页面重试。';
+    return;
+  }
+  for (const col of columnMeta) {
+    const label = document.createElement('label');
+    label.className = 'export-field-item';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = col.field;
+    checkbox.checked = currentExportFields.includes(col.field);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(' ' + (col.comment || col.field)));
+    exportFieldsEl.appendChild(label);
+  }
+}
+
+function getSelectedExportFields() {
+  const checkboxes = exportFieldsEl.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.from(checkboxes).map(cb => cb.value);
+}
 
 async function loadSettingsUI() {
   try {
+    await loadColumns();
     const resp = await fetch(`${API_BASE}/api/settings`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const result = await resp.json();
@@ -25,10 +68,13 @@ async function loadSettingsUI() {
       dbUserInput.value = result.data.db_user || '';
       dbPasswordInput.value = result.data.db_password || '';
       dbNameInput.value = result.data.db_name || '';
+      currentExportFields = Array.isArray(result.data.export_fields) ? result.data.export_fields : [];
     }
+    renderExportFields();
   } catch (err) {
     console.error('加载设置失败:', err);
     showSettingsStatus('加载设置失败：' + err.message, 'error');
+    renderExportFields();
   }
 }
 
@@ -71,6 +117,7 @@ async function saveAllSettings() {
     db_user: dbUserInput.value.trim(),
     db_password: dbPasswordInput.value,
     db_name: dbNameInput.value.trim(),
+    export_fields: getSelectedExportFields(),
   };
 
   if (!payload.archive_folder) {

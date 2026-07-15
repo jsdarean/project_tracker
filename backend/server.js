@@ -20,6 +20,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 本地归档设置文件
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
 
+// 默认导出字段（排除系统字段）
+const defaultExportFields = projectColumns
+  .map(def => {
+    const m = def.match(/^`([^`]+)`/);
+    return m ? m[1] : '';
+  })
+  .filter(f => f && !['id', 'created_at', 'updated_at', 'status'].includes(f));
+
 async function loadSettings() {
   const dbCfg = getDbConfig();
   const defaults = {
@@ -30,6 +38,7 @@ async function loadSettings() {
     db_user: dbCfg.user,
     db_password: dbCfg.password,
     db_name: dbCfg.database,
+    export_fields: defaultExportFields,
   };
   try {
     const raw = await fs.readFile(SETTINGS_FILE, 'utf8');
@@ -90,6 +99,9 @@ app.post('/api/settings', async (req, res) => {
     const dbUser = String(body.db_user || '').trim() || 'root';
     const dbPassword = String(body.db_password || '');
     const dbName = String(body.db_name || '').trim() || 'project_tracker';
+    const exportFields = Array.isArray(body.export_fields)
+      ? body.export_fields.filter(f => typeof f === 'string' && f)
+      : defaultExportFields;
 
     if (!folder) {
       return res.status(400).json({ error: '请填写归档文件夹路径' });
@@ -136,6 +148,7 @@ app.post('/api/settings', async (req, res) => {
       db_user: dbUser,
       db_password: dbPassword,
       db_name: dbName,
+      export_fields: exportFields,
     };
     await saveSettings(settings);
 

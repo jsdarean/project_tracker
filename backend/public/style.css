@@ -463,6 +463,32 @@ td input[type="checkbox"] {
   color: var(--ink-mute);
 }
 
+.export-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-sm) var(--space-lg);
+  flex: 1;
+}
+
+.export-field-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 14px;
+  font-weight: 300;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+}
+
+.export-field-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .hero {
