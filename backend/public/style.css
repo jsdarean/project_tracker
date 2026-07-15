@@ -465,12 +465,14 @@ td input[type="checkbox"] {
 
 .export-fields {
   display: block;
-  flex: 1 1 0%;
-  min-width: 0;
+  width: 100%;
 }
 
 .export-field-item {
   display: inline-block;
+  width: auto;
+  min-width: fit-content;
+  max-width: 100%;
   padding: 5px 10px;
   margin: 0 8px 8px 0;
   font-size: 14px;
