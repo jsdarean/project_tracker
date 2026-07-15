@@ -472,32 +472,41 @@ td input[type="checkbox"] {
 
 .export-field-item {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
+  gap: 6px;
+  padding: 6px 10px;
   font-size: 14px;
-  font-weight: 300;
-  color: var(--ink);
-  background: var(--canvas);
-  border: 1px solid var(--hairline-input);
-  border-radius: var(--rounded-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  color: #0d253d;
+  background: #ffffff;
+  border: 1px solid #a8c3de;
+  border-radius: 6px;
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .export-field-item:hover {
-  border-color: var(--primary);
-  background: rgba(83, 58, 253, 0.03);
+  border-color: #533afd;
+  background: rgba(83, 58, 253, 0.04);
 }
 
 .export-field-item input[type="checkbox"] {
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: var(--primary);
+  accent-color: #533afd;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.export-field-text {
+  display: inline;
+  color: #0d253d;
+  white-space: nowrap;
 }
 
 /* Responsive */
