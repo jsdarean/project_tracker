@@ -471,7 +471,7 @@ td input[type="checkbox"] {
 }
 
 .export-field-item {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
   align-items: center;
   gap: 6px;
@@ -486,6 +486,7 @@ td input[type="checkbox"] {
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
+  flex: 0 0 auto;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -504,7 +505,6 @@ td input[type="checkbox"] {
 }
 
 .export-field-text {
-  display: inline;
   color: #0d253d;
   white-space: nowrap;
 }
