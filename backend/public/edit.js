@@ -72,74 +72,91 @@ function parseEnumValues(type) {
     .map(v => v.trim().replace(/^['"]|['"]$/g, ''));
 }
 
+// 预算相关 6 个字段 + 执行金额 4 个字段，强制排在变更页最末尾
+const tailFields = [
+  'mid_year_budget', 'budget_increase', 'undecided_supplement',
+  'decided_budget', 'decided_in_project', 'undecided_in_project',
+  'estimated_actual', 'releasable_amount', 'design_amount', 'completion_amount'
+];
+
 function renderForm() {
   formFields.innerHTML = '';
 
-  for (const col of columnMeta) {
-    const field = col.field;
-    const comment = col.comment || field;
-    const type = col.type || '';
-    const value = originalData[field];
+  const tailSet = new Set(tailFields);
+  const mainCols = columnMeta.filter(c => !tailSet.has(c.field));
+  const tailCols = tailFields
+    .map(f => columnMeta.find(c => c.field === f))
+    .filter(Boolean);
 
-    const group = document.createElement('div');
-    group.className = 'form-group';
-    if (textareaFields.has(field) || type.toLowerCase().includes('text')) {
-      group.classList.add('full-width');
-    }
-
-    const label = document.createElement('label');
-    label.textContent = comment;
-    label.htmlFor = `field-${field}`;
-    group.appendChild(label);
-
-    if (readonlyFields.has(field)) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.id = `field-${field}`;
-      input.name = field;
-      input.value = value ?? '';
-      input.className = 'readonly-field';
-      input.readOnly = true;
-      group.appendChild(input);
-    } else if (type.toLowerCase().includes('enum')) {
-      const values = parseEnumValues(type);
-      const select = document.createElement('select');
-      select.id = `field-${field}`;
-      select.name = field;
-      // 空选项
-      const emptyOption = document.createElement('option');
-      emptyOption.value = '';
-      emptyOption.textContent = '请选择';
-      select.appendChild(emptyOption);
-      for (const v of values || []) {
-        const opt = document.createElement('option');
-        opt.value = v;
-        opt.textContent = v;
-        if (value === v) opt.selected = true;
-        select.appendChild(opt);
-      }
-      group.appendChild(select);
-    } else if (textareaFields.has(field) || type.toLowerCase().includes('text')) {
-      const textarea = document.createElement('textarea');
-      textarea.id = `field-${field}`;
-      textarea.name = field;
-      textarea.value = value ?? '';
-      group.appendChild(textarea);
-    } else {
-      const inputType = getInputType(type);
-      const input = document.createElement('input');
-      input.type = inputType;
-      input.id = `field-${field}`;
-      input.name = field;
-      input.value = value ?? '';
-      if (inputType === 'number') {
-        input.step = type.toLowerCase().includes('int') ? '1' : '0.0001';
-      }
-      group.appendChild(input);
-    }
-
-    formFields.appendChild(group);
+  for (const col of [...mainCols, ...tailCols]) {
+    formFields.appendChild(renderField(col));
   }
+}
+
+function renderField(col) {
+  const field = col.field;
+  const comment = col.comment || field;
+  const type = col.type || '';
+  const value = originalData[field];
+
+  const group = document.createElement('div');
+  group.className = 'form-group';
+  if (textareaFields.has(field) || type.toLowerCase().includes('text')) {
+    group.classList.add('full-width');
+  }
+
+  const label = document.createElement('label');
+  label.textContent = comment;
+  label.htmlFor = `field-${field}`;
+  group.appendChild(label);
+
+  if (readonlyFields.has(field)) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `field-${field}`;
+    input.name = field;
+    input.value = value ?? '';
+    input.className = 'readonly-field';
+    input.readOnly = true;
+    group.appendChild(input);
+  } else if (type.toLowerCase().includes('enum')) {
+    const values = parseEnumValues(type);
+    const select = document.createElement('select');
+    select.id = `field-${field}`;
+    select.name = field;
+    // 空选项
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = '请选择';
+    select.appendChild(emptyOption);
+    for (const v of values || []) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      if (value === v) opt.selected = true;
+      select.appendChild(opt);
+    }
+    group.appendChild(select);
+  } else if (textareaFields.has(field) || type.toLowerCase().includes('text')) {
+    const textarea = document.createElement('textarea');
+    textarea.id = `field-${field}`;
+    textarea.name = field;
+    textarea.value = value ?? '';
+    group.appendChild(textarea);
+  } else {
+    const inputType = getInputType(type);
+    const input = document.createElement('input');
+    input.type = inputType;
+    input.id = `field-${field}`;
+    input.name = field;
+    input.value = value ?? '';
+    if (inputType === 'number') {
+      input.step = type.toLowerCase().includes('int') ? '1' : '0.0001';
+    }
+    group.appendChild(input);
+  }
+
+  return group;
 }
 
 function collectData() {

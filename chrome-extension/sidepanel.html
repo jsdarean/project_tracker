@@ -167,36 +167,6 @@
     </fieldset>
 
     <fieldset>
-      <legend>预算相关（通常需手工补录）</legend>
-      <div class="grid-3">
-        <div class="field">
-          <label for="mid_year_budget">年中预算决策情况</label>
-          <input type="text" id="mid_year_budget" name="mid_year_budget">
-        </div>
-        <div class="field">
-          <label for="budget_increase">预算增加情况</label>
-          <input type="text" id="budget_increase" name="budget_increase">
-        </div>
-        <div class="field">
-          <label for="undecided_supplement">未决策预算追加</label>
-          <input type="text" id="undecided_supplement" name="undecided_supplement">
-        </div>
-        <div class="field">
-          <label for="decided_budget">已决策预算</label>
-          <input type="text" id="decided_budget" name="decided_budget">
-        </div>
-        <div class="field">
-          <label for="decided_in_project">其中项目已决策</label>
-          <input type="text" id="decided_in_project" name="decided_in_project">
-        </div>
-        <div class="field">
-          <label for="undecided_in_project">其中项目未决策</label>
-          <input type="text" id="undecided_in_project" name="undecided_in_project">
-        </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
       <legend>其他</legend>
       <div class="grid-3">
         <div class="field">
@@ -240,6 +210,44 @@
     </fieldset>
 
     <fieldset>
+      <legend>原始正文</legend>
+      <div class="field">
+        <label for="extracted_text">立项批复正文</label>
+        <textarea id="extracted_text" name="extracted_text" rows="6" readonly></textarea>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>预算相关（通常需手工补录）</legend>
+      <div class="grid-3">
+        <div class="field">
+          <label for="mid_year_budget">年中预算决策情况</label>
+          <input type="text" id="mid_year_budget" name="mid_year_budget">
+        </div>
+        <div class="field">
+          <label for="budget_increase">预算增加情况</label>
+          <input type="text" id="budget_increase" name="budget_increase">
+        </div>
+        <div class="field">
+          <label for="undecided_supplement">未决策预算追加</label>
+          <input type="text" id="undecided_supplement" name="undecided_supplement">
+        </div>
+        <div class="field">
+          <label for="decided_budget">已决策预算</label>
+          <input type="text" id="decided_budget" name="decided_budget">
+        </div>
+        <div class="field">
+          <label for="decided_in_project">其中项目已决策</label>
+          <input type="text" id="decided_in_project" name="decided_in_project">
+        </div>
+        <div class="field">
+          <label for="undecided_in_project">其中项目未决策</label>
+          <input type="text" id="undecided_in_project" name="undecided_in_project">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
       <legend>执行金额（通常需手工补录）</legend>
       <div class="grid-3">
         <div class="field">
@@ -258,14 +266,6 @@
           <label for="completion_amount">竣工金额</label>
           <input type="number" step="0.0001" id="completion_amount" name="completion_amount">
         </div>
-      </div>
-    </fieldset>
-
-    <fieldset>
-      <legend>原始正文</legend>
-      <div class="field">
-        <label for="extracted_text">立项批复正文</label>
-        <textarea id="extracted_text" name="extracted_text" rows="6" readonly></textarea>
       </div>
     </fieldset>
 
