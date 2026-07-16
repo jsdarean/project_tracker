@@ -63,12 +63,17 @@ def main():
 
     # 三、启动后端
     add_heading(doc, '三、启动后端服务', level=1)
-    add_para(doc, '1. 打开命令行，进入 backend 目录：')
+    add_para(doc, '1. 确认 Node.js 已安装并添加到系统 PATH')
+    add_para(doc, '   在命令行中输入以下命令，若能显示版本号则说明配置正确：')
+    add_para(doc, 'node -v', bold=True)
+    add_para(doc, 'npm -v', bold=True)
+    add_para(doc, '   若提示“不是内部或外部命令”，请找到本机 node.exe 所在目录（例如 C:\\Users\\用户名\\AppData\\Local\\nodejs\\node-v22.23.1-win-x64），将其加入系统环境变量 PATH，然后重新打开命令行窗口。')
+    add_para(doc, '2. 安装依赖（首次，需在有 npm 的命令行中执行）：')
     add_para(doc, 'cd backend', bold=True)
-    add_para(doc, '2. 安装依赖（首次）：')
     add_para(doc, 'npm install', bold=True)
     add_para(doc, '3. 启动服务：')
     add_para(doc, 'npm start', bold=True)
+    add_para(doc, '   或者双击项目根目录下的 start-backend.bat。')
     add_para(doc, '4. 浏览器访问 http://localhost:3000/ 查看是否正常运行。')
 
     # 四、首次配置
@@ -118,6 +123,8 @@ def main():
     add_heading(doc, '八、常见问题', level=1)
     add_para(doc, 'Q：后端启动报端口占用？')
     add_para(doc, 'A：结束占用 3000 端口的进程，或修改 .env 中的 PORT。')
+    add_para(doc, 'Q：双击 start-backend.bat 窗口一闪而过？')
+    add_para(doc, 'A：通常是 Windows 系统 PATH 中没有 Node.js/npm。请按“三、启动后端服务”第 1 步配置环境变量后重试。')
     add_para(doc, 'Q：归档文件没有移动？')
     add_para(doc, 'A：检查设置中的归档文件夹和浏览器默认下载目录是否正确。')
     add_para(doc, 'Q：数据库连接测试失败？')

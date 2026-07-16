@@ -31,6 +31,25 @@ project_tracker/
 
 ## 安装步骤
 
+### 0. 配置 Node.js 环境变量（重要）
+
+双击 `start-backend.bat` 前，请确保 Windows 系统 PATH 中包含 Node.js 和 npm。
+
+在命令行中输入：
+
+```bash
+node -v
+npm -v
+```
+
+若能显示版本号，说明配置正确。若提示“不是内部或外部命令”，请找到本机 `node.exe` 所在目录，例如：
+
+```
+C:\Users\你的用户名\AppData\Local\nodejs\node-v22.23.1-win-x64
+```
+
+将该目录添加到系统环境变量 `PATH` 中，然后重新打开命令行窗口。
+
 ### 1. 配置后端数据库
 
 进入 `backend` 目录，运行交互式配置助手（推荐）：
@@ -55,6 +74,10 @@ DB_NAME=project_tracker
 ```
 
 ### 2. 启动后端服务
+
+方式一：双击项目根目录下的 `start-backend.bat`。
+
+方式二：在命令行中执行：
 
 ```bash
 cd backend
@@ -114,6 +137,10 @@ npm start
 | F/G/M/P~U/V/W/X/AA/AB | 无法从立项批复正文稳定提取，默认留空，在侧边栏手工补录 |
 
 ## 常见问题
+
+### 双击 start-backend.bat 窗口一闪而过
+
+通常是 Windows 系统 PATH 中没有 Node.js/npm。请参考“安装步骤”中的“0. 配置 Node.js 环境变量”部分配置后重试。
 
 ### 后端提示连接 MySQL 失败
 
