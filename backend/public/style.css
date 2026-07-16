@@ -484,48 +484,35 @@ td input[type="checkbox"] {
 
 .export-fields {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(8, minmax(0, auto));
+  gap: 10px 8px;
   width: 100%;
-}
-
-.export-field-wrapper {
-  display: inline-flex;
-  flex-direction: row;
   align-items: center;
-  gap: 5px;
-  justify-self: start;
 }
 
-.export-field-text {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: calc(100% - 23px);
+.export-fields input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: #533afd;
+  cursor: pointer;
+  justify-self: end;
+}
+
+.export-fields span {
   padding: 7px 10px;
   font-size: 14px;
   font-weight: 400;
   line-height: 1.3;
-  color: #000000 !important;
+  color: #000000;
   background: #ffffff;
   border: 1px solid #a8c3de;
   border-radius: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.export-field-wrapper input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  flex: 0 0 18px;
-  accent-color: #533afd;
-  cursor: pointer;
-}
-
-.export-field-hit {
-  display: none;
+  cursor: default;
 }
 
 /* Responsive */

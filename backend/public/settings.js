@@ -37,22 +37,16 @@ function renderExportFields() {
     return;
   }
   for (const col of columnMeta) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'export-field-wrapper';
-    const text = document.createElement('span');
-    text.className = 'export-field-text';
-    text.textContent = col.comment || col.field;
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.id = `export-field-${col.field}`;
     checkbox.value = col.field;
     checkbox.checked = currentExportFields.includes(col.field);
-    const label = document.createElement('label');
-    label.htmlFor = checkbox.id;
-    label.className = 'export-field-hit';
-    wrapper.appendChild(checkbox);
-    wrapper.appendChild(text);
-    exportFieldsEl.appendChild(wrapper);
+    const text = document.createElement('span');
+    text.textContent = col.comment || col.field;
+    text.title = col.comment || col.field;
+    exportFieldsEl.appendChild(checkbox);
+    exportFieldsEl.appendChild(text);
   }
 }
 
