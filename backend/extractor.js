@@ -139,6 +139,15 @@ function extractPlanningManager(text) {
   return '';
 }
 
+function extractContactPerson(text) {
+  // 立项批复末尾落款处的“联系人：XXX”
+  const matches = Array.from(text.matchAll(/联系人\s*[:：]\s*([^，。；\n\s]+)/g));
+  if (matches.length > 0) {
+    return matches[matches.length - 1][1].trim();
+  }
+  return '';
+}
+
 function stripOrgPrefix(str) {
   return str
     .replace(/^你公司/, '')
@@ -246,19 +255,22 @@ function extractResponsibility(text, personLabels, deptLabels, recipient = '') {
   return { dept, person };
 }
 
-function extractResponsibilities(text, recipient = '') {
+function extractResponsibilities(text, recipient = '', constructionUnit = '') {
   const investment = extractResponsibility(
     text,
     ['项目投资责任人', '投资责任人'],
-    ['项目投资责任部门', '投资责任部门'],
+    ['项目投资责任人单位', '项目投资责任部门', '投资责任部门'],
     recipient
   );
   const engineering = extractResponsibility(
     text,
     ['项目工程管理责任人', '工程管理责任人'],
-    ['项目工程管理责任部门', '工程管理责任部门'],
+    ['项目工程建设单位', '项目工程管理责任部门', '工程管理责任部门'],
     recipient
   );
+  if (!engineering.dept && constructionUnit) {
+    engineering.dept = constructionUnit;
+  }
   const software = extractResponsibility(
     text,
     ['软件开发管理责任人', '软件管理责任人'],
@@ -268,13 +280,13 @@ function extractResponsibilities(text, recipient = '') {
   const maintenance = extractResponsibility(
     text,
     ['项目维护责任人', '维护责任人'],
-    ['项目维护责任部门', '维护责任部门'],
+    ['项目维护单位', '项目维护责任部门', '维护责任部门'],
     recipient
   );
   const procurement = extractResponsibility(
     text,
-    ['项目合同采购责任人', '合同采购责任人'],
-    ['项目合同采购责任部门', '合同采购责任部门'],
+    ['项目合同采购责任人', '合同采购责任人', '项目采购责任人'],
+    ['项目采购责任人单位', '项目合同采购责任部门', '采购责任部门'],
     recipient
   );
 
@@ -531,12 +543,13 @@ function extract(text) {
   const approvalDate = extractChineseDate(normalized);
   const amount = extractInvestment(normalized);
   const projectManager = extractProjectManager(normalized);
-  const planningManager = extractPlanningManager(normalized);
+  const contactPerson = extractContactPerson(text);
+  const planningManager = contactPerson || extractPlanningManager(normalized);
   // 主送单位识别需要保留原始换行，因此使用未 normalized 的 text
   const recipient = extractRecipient(text);
-  const responsibilities = extractResponsibilities(normalized, recipient);
-  const decisionMethod = inferDecisionMethod(normalized);
   const constructionUnit = extractConstructionUnit(normalized);
+  const responsibilities = extractResponsibilities(normalized, recipient, constructionUnit);
+  const decisionMethod = inferDecisionMethod(normalized);
   const buildLevel = inferBuildLevel(constructionUnit, recipient);
   const region = inferRegion(recipient, constructionUnit);
   const docNumber = extractDocNumber(normalized);

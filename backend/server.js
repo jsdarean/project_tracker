@@ -5,8 +5,8 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const xlsx = require('xlsx');
-const { exec } = require('child_process');
-const { query, initDatabase, projectColumns, setDbConfig, getDbConfig } = require('./db');
+const { exec, spawn } = require('child_process');
+const { query, initDatabase, projectColumns, contactColumns, setDbConfig, getDbConfig } = require('./db');
 const { extract } = require('./extractor');
 
 const app = express();
@@ -27,6 +27,9 @@ const defaultExportFields = projectColumns
     return m ? m[1] : '';
   })
   .filter(f => f && !['id', 'created_at', 'updated_at', 'status'].includes(f));
+
+// 联系人可维护字段
+const contactFields = ['city', 'company', 'department', 'position', 'name', 'phone', 'email', 'remarks', 'related_project'];
 
 async function loadSettings() {
   const dbCfg = getDbConfig();
@@ -217,9 +220,9 @@ app.post('/api/open-folder', async (req, res) => {
       return res.status(404).json({ error: '项目文件夹不存在', path: targetDir });
     }
 
-    // Windows 使用 start 命令打开文件夹，尝试获取焦点并最大化显示
+    // Windows 使用 explorer.exe 打开文件夹；start /max 尝试最大化，但 File Explorer 不一定始终生效
     const escapedDir = targetDir.replace(/"/g, '""');
-    const cmd = `cmd /c start "" /max "${escapedDir}"`;
+    const cmd = `cmd /c start "" /max explorer.exe "${escapedDir}"`;
     exec(cmd, (err) => {
       if (err) {
         console.error('打开文件夹失败:', err);
@@ -543,6 +546,102 @@ app.delete('/api/projects/:id', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: '删除失败', message: err.message });
+  }
+});
+
+/* ---------- 联系人接口 ---------- */
+
+// 列表查询
+app.get('/api/contacts', async (req, res) => {
+  try {
+    const { keyword } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const size = Math.max(1, Math.min(100, parseInt(req.query.pageSize, 10) || 20));
+    const offset = (page - 1) * size;
+
+    let sql = 'SELECT * FROM contacts WHERE 1=1';
+    const params = [];
+    if (keyword) {
+      sql += ' AND (`name` LIKE ? OR `company` LIKE ? OR `department` LIKE ? OR `phone` LIKE ? OR `related_project` LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    sql += ` ORDER BY id DESC LIMIT ${size} OFFSET ${offset}`;
+    const rows = await query(sql, params);
+
+    let countSql = 'SELECT COUNT(*) AS total FROM contacts WHERE 1=1';
+    const countParams = [];
+    if (keyword) {
+      countSql += ' AND (`name` LIKE ? OR `company` LIKE ? OR `department` LIKE ? OR `phone` LIKE ? OR `related_project` LIKE ?)';
+      countParams.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    const [countRow] = await query(countSql, countParams);
+
+    res.json({ success: true, data: rows, total: countRow.total });
+  } catch (err) {
+    console.error('查询联系人失败:', err);
+    res.status(500).json({ error: '查询联系人失败', message: err.message });
+  }
+});
+
+// 单条查询
+app.get('/api/contacts/:id', async (req, res) => {
+  try {
+    const rows = await query('SELECT * FROM contacts WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: '联系人不存在' });
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: '查询联系人失败', message: err.message });
+  }
+});
+
+// 创建联系人
+app.post('/api/contacts', async (req, res) => {
+  try {
+    const data = req.body || {};
+    const values = contactFields.map(f => {
+      const v = data[f];
+      return v === undefined || v === '' ? null : v;
+    });
+    const placeholders = contactFields.map(() => '?').join(',');
+    const sql = `INSERT INTO contacts (${contactFields.map(f => '\`' + f + '\`').join(',')}) VALUES (${placeholders})`;
+    const result = await query(sql, values);
+    res.json({ success: true, id: result.insertId });
+  } catch (err) {
+    console.error('创建联系人失败:', err);
+    res.status(500).json({ error: '创建联系人失败', message: err.message });
+  }
+});
+
+// 更新联系人
+app.put('/api/contacts/:id', async (req, res) => {
+  try {
+    const data = req.body || {};
+    const updates = [];
+    const values = [];
+    for (const f of contactFields) {
+      if (data[f] !== undefined) {
+        updates.push('\`' + f + '\` = ?');
+        values.push(data[f] === '' ? null : data[f]);
+      }
+    }
+    if (updates.length === 0) return res.status(400).json({ error: '没有可更新字段' });
+    values.push(req.params.id);
+    const sql = `UPDATE contacts SET ${updates.join(',')} WHERE id = ?`;
+    await query(sql, values);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('更新联系人失败:', err);
+    res.status(500).json({ error: '更新联系人失败', message: err.message });
+  }
+});
+
+// 删除联系人
+app.delete('/api/contacts/:id', async (req, res) => {
+  try {
+    await query('DELETE FROM contacts WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '删除联系人失败', message: err.message });
   }
 });
 

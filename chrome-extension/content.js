@@ -137,17 +137,19 @@ async function clickExpandButtons() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'CLICK_DOWNLOAD_BUTTON') {
-    try {
-      const el = findElementByText('表单下载');
-      if (!el) {
-        sendResponse({ success: false, error: '未找到“表单下载”按钮' });
-        return true;
+    (async () => {
+      try {
+        const el = await findElementByTextWithRetry('表单下载', 12, 300);
+        if (!el) {
+          sendResponse({ success: false, error: '未找到“表单下载”按钮' });
+          return;
+        }
+        const clicked = clickElement(el);
+        sendResponse({ success: clicked, clickedText: el.textContent?.trim() });
+      } catch (err) {
+        sendResponse({ success: false, error: err.message });
       }
-      const clicked = clickElement(el);
-      sendResponse({ success: clicked, clickedText: el.textContent?.trim() });
-    } catch (err) {
-      sendResponse({ success: false, error: err.message });
-    }
+    })();
     return true;
   }
 

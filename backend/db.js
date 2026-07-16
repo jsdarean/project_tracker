@@ -94,6 +94,22 @@ const projectColumns = [
   '`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT \'更新时间\'',
 ];
 
+// 联系人表字段定义
+const contactColumns = [
+  '`id` INT NOT NULL AUTO_INCREMENT COMMENT \'序号\'',
+  '`city` VARCHAR(100) DEFAULT NULL COMMENT \'地市\'',
+  '`company` VARCHAR(200) DEFAULT NULL COMMENT \'公司\'',
+  '`department` VARCHAR(200) DEFAULT NULL COMMENT \'部门\'',
+  '`position` VARCHAR(100) DEFAULT NULL COMMENT \'职务\'',
+  '`name` VARCHAR(100) NOT NULL COMMENT \'姓名\'',
+  '`phone` VARCHAR(100) DEFAULT NULL COMMENT \'电话\'',
+  '`email` VARCHAR(200) DEFAULT NULL COMMENT \'邮箱\'',
+  '`remarks` TEXT COMMENT \'备注\'',
+  '`related_project` VARCHAR(500) DEFAULT NULL COMMENT \'关联项目\'',
+  '`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT \'创建时间\'',
+  '`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT \'更新时间\'',
+];
+
 function parseColumnName(colDef) {
   const m = colDef.match(/^`([^`]+)`/);
   return m ? m[1] : '';
@@ -143,6 +159,38 @@ async function initDatabase() {
     await db.query(alterStmt);
   }
 
+  // 创建联系人表
+  const createContactsSql = `
+    CREATE TABLE IF NOT EXISTS \`contacts\` (
+      ${contactColumns.join(',\n      ')},
+      PRIMARY KEY (\`id\`),
+      KEY \`idx_contact_name\` (\`name\`),
+      KEY \`idx_contact_department\` (\`department\`),
+      KEY \`idx_contact_related_project\` (\`related_project\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `;
+  await query(createContactsSql);
+
+  // 为已存在的联系人表补充缺失字段
+  const [existingContactCols] = await db.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+    [dbName, 'contacts']
+  );
+  const existingContactSet = new Set(existingContactCols.map(c => c.COLUMN_NAME));
+  for (const colDef of contactColumns) {
+    const colName = parseColumnName(colDef);
+    if (!existingContactSet.has(colName)) {
+      await db.query(`ALTER TABLE \`contacts\` ADD COLUMN ${colDef}`);
+      console.log('新增联系人表字段:', colName);
+    }
+  }
+
+  // 为已存在的联系人表补充/更新字段注释
+  for (const colDef of contactColumns) {
+    const alterStmt = `ALTER TABLE \`contacts\` MODIFY COLUMN ${colDef}`;
+    await db.query(alterStmt);
+  }
+
   console.log('数据库与表初始化完成:', dbName);
 }
 
@@ -151,6 +199,7 @@ module.exports = {
   query,
   initDatabase,
   projectColumns,
+  contactColumns,
   setDbConfig,
   getDbConfig,
 };

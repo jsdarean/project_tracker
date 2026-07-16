@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>联系人管理 - 项目信息查询</title>
+  <link rel="stylesheet" href="style.css?v=25">
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-mesh" aria-hidden="true"></div>
+    <div class="container hero-content">
+      <header class="page-header">
+        <div class="page-title">
+          <h1>联系人管理</h1>
+          <p>本地 MySQL <code>project_tracker.contacts</code> 表中的联系人数据</p>
+        </div>
+        <a href="index.html" class="btn-secondary settings-btn">返回查询</a>
+      </header>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="toolbar card">
+      <input type="text" id="searchInput" placeholder="搜索姓名、公司、部门、电话、关联项目…">
+      <button id="addBtn" class="btn-primary">新增联系人</button>
+    </div>
+
+    <div id="loading" class="loading card">加载中...</div>
+    <div id="error" class="error card" style="display: none;"></div>
+
+    <div class="table-wrapper card">
+      <table id="contactsTable">
+        <thead>
+          <tr id="headerRow"></tr>
+        </thead>
+        <tbody>
+          <!-- 动态填充 -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button id="prevBtn" class="btn-secondary">上一页</button>
+      <span id="pageInfo">第 1 页</span>
+      <button id="nextBtn" class="btn-secondary">下一页</button>
+    </div>
+  </main>
+
+  <div id="modalOverlay" class="modal-overlay" style="display: none;">
+    <div class="modal card">
+      <div class="modal-header">
+        <h2 id="modalTitle">新增联系人</h2>
+        <button id="modalClose" class="btn-small" title="关闭">&times;</button>
+      </div>
+      <div class="modal-body" id="modalForm"></div>
+      <div class="modal-footer">
+        <button id="saveBtn" class="btn-primary">保存</button>
+        <button id="cancelBtn" class="btn-secondary">取消</button>
+        <span id="modalStatus" class="settings-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="contacts.js?v=24"></script>
+</body>
+</html>

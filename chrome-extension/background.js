@@ -69,21 +69,30 @@ async function handleOrganizeDownload({ project_code, project_name, fields }) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) throw new Error('未找到当前活动标签页');
 
-  // 临时屏蔽“表单下载”按钮逻辑，直接走 PDF 打印归档
-  // let clickResp = null;
-  // try {
-  //   clickResp = await chrome.tabs.sendMessage(tab.id, { type: 'CLICK_DOWNLOAD_BUTTON' });
-  //   console.log('[background.js] 表单下载点击结果:', clickResp);
-  // } catch (err) {
-  //   clickResp = { success: false, error: err.message };
-  //   console.warn('[background.js] 点击表单下载通信失败:', err.message);
-  // }
-  // if (clickResp && clickResp.success) {
-  //   return waitForDownloadAndOrganize({ project_code, project_name, fields });
-  // }
+  // 优先尝试点击“表单下载”按钮；找不到、点击失败或未捕获到下载时，退回到 PDF 打印归档
+  let clickResp = null;
+  try {
+    clickResp = await chrome.tabs.sendMessage(tab.id, { type: 'CLICK_DOWNLOAD_BUTTON' });
+    console.log('[background.js] 表单下载点击结果:', clickResp);
+  } catch (err) {
+    clickResp = { success: false, error: err.message };
+    console.warn('[background.js] 点击表单下载通信失败:', err.message);
+  }
+  if (clickResp && clickResp.success) {
+    try {
+      return await waitForDownloadAndOrganize({ project_code, project_name, fields });
+    } catch (err) {
+      console.warn('[background.js] 表单下载未捕获到文件，退回到 PDF 打印归档:', err.message);
+      // 清理可能挂起的下载监听
+      if (pendingOrganize) {
+        clearTimeout(pendingOrganize.timeout);
+        pendingOrganize = null;
+      }
+    }
+  }
 
-  // 直接通过打印为 PDF 归档
-  console.log('[background.js] 直接走 PDF 打印归档');
+  // 退回到 PDF 打印归档
+  console.log('[background.js] 走 PDF 打印归档');
   return printAndOrganizePdf(tab.id, project_code, project_name, fields);
 }
 
@@ -479,15 +488,15 @@ function findArticleText() {
 // 适配常见中后台表单结构：Element UI / Ant Design / 普通 table / label:value 等
 function extractResponsibilities() {
   const labelMap = {
-    investment_dept: ['项目投资责任部门', '投资责任部门'],
+    investment_dept: ['项目投资责任人单位', '项目投资责任部门', '投资责任部门'],
     investment_person: ['项目投资责任人', '投资责任人'],
-    engineering_dept: ['工程管理责任部门', '项目管理责任部门'],
+    engineering_dept: ['项目工程建设单位', '工程管理责任部门', '项目管理责任部门', '工程建设单位'],
     engineering_person: ['项目工程管理责任人', '工程管理责任人'],
     software_dept: ['软件开发管理责任部门', '软件管理责任部门'],
     software_person: ['软件开发管理责任人', '软件管理责任人'],
-    maintenance_dept: ['项目维护责任部门', '维护责任部门'],
+    maintenance_dept: ['项目维护单位', '项目维护责任部门', '维护责任部门', '维护单位'],
     maintenance_person: ['项目维护责任人', '维护责任人'],
-    procurement_dept: ['项目合同采购责任部门', '合同采购责任部门', '项目采购责任部门'],
+    procurement_dept: ['项目采购责任人单位', '项目合同采购责任部门', '合同采购责任部门', '项目采购责任部门'],
     procurement_person: ['项目合同采购责任人', '合同采购责任人', '项目采购责任人'],
   };
 
@@ -504,9 +513,13 @@ function extractResponsibilities() {
 
   function splitDeptPerson(raw) {
     if (!raw) return { dept: '', person: '' };
-    const m = raw.match(/^(.*[部中心局处科])([^部中心局处科，。；\n]+)$/);
+    // 去掉常见的“单位为/部门为/为”前缀
+    const cleaned = raw.replace(/^(?:单位|部门)?\s*为\s*/, '').trim();
+    const m = cleaned.match(/^(.*[部中心局处科司])([^部中心局处科司，。；\n]+)$/);
     if (m) return { dept: m[1].trim(), person: m[2].trim() };
-    return { dept: '', person: raw.trim() };
+    // 如果整段看起来是部门（以部/中心/局/处/科/司结尾），则只有部门没有姓名
+    if (/[部中心局处科司]$/.test(cleaned)) return { dept: cleaned, person: '' };
+    return { dept: '', person: cleaned };
   }
 
   function extractAfterLabel(el, label) {
@@ -519,7 +532,8 @@ function extractResponsibilities() {
     const rest = text.slice(idx + label.length);
     const m = rest.match(/^[\s为:：]*([^，。；\n]+)/);
     if (m) {
-      const val = m[1].trim();
+      // 去掉“单位为”“部门为”等前缀，避免把部门描述填到责任人字段
+      const val = m[1].trim().replace(/^(单位|部门)\s*为\s*/, '').trim();
       if (val) return val;
     }
 
@@ -594,16 +608,20 @@ function extractResponsibilities() {
     result[key] = getFirstValue(labels);
   }
 
-  // 对于 *_person 字段，如果值里同时包含部门和姓名，则拆分并把部门回填 *_dept
+  // 对于 *_person 字段，如果值里同时包含部门和姓名，则拆分并把部门回填 *_dept；
+  // 如果值实际只是部门描述（如“单位为省公司供应链管理部”），则回填 *_dept 并清空 *_person
   const personKeys = ['investment_person', 'engineering_person', 'software_person', 'maintenance_person', 'procurement_person'];
   for (const personKey of personKeys) {
     const raw = result[personKey];
     if (!raw) continue;
     const split = splitDeptPerson(raw);
+    const deptKey = personKey.replace('_person', '_dept');
     if (split.person) {
       result[personKey] = split.person;
-      const deptKey = personKey.replace('_person', '_dept');
+      if (!result[deptKey] && split.dept) result[deptKey] = split.dept;
+    } else if (split.dept) {
       if (!result[deptKey]) result[deptKey] = split.dept;
+      result[personKey] = '';
     }
   }
 

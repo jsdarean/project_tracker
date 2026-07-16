@@ -18,6 +18,7 @@ const displayColumns = [
   'approval_amount',
   'project_set',
   'project_subset',
+  'planning_manager',
   'project_manager',
   'investment_dept',
   'investment_person',
@@ -196,6 +197,8 @@ function renderCell(field, row) {
       return `<td>${escapeHtml(row.project_set || '')}</td>`;
     case 'project_subset':
       return `<td>${escapeHtml(row.project_subset || '')}</td>`;
+    case 'planning_manager':
+      return `<td>${escapeHtml(row.planning_manager || '')}</td>`;
     case 'project_manager':
       return `<td>${escapeHtml(row.project_manager || '')}</td>`;
     case 'investment_dept':
