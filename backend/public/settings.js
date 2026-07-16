@@ -50,8 +50,8 @@ function renderExportFields() {
     const label = document.createElement('label');
     label.htmlFor = checkbox.id;
     label.className = 'export-field-hit';
-    wrapper.appendChild(text);
     wrapper.appendChild(checkbox);
+    wrapper.appendChild(text);
     exportFieldsEl.appendChild(wrapper);
   }
 }
