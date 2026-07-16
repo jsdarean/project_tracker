@@ -150,55 +150,62 @@ main.container {
   margin-top: 4px;
 }
 
-.settings-panel {
-  padding: var(--space-lg);
-  margin-bottom: var(--space-lg);
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding-bottom: var(--space-huge);
 }
 
-.settings-panel h2 {
-  margin: 0 0 var(--space-md);
-  font-size: 18px;
-  font-weight: 400;
+.settings-card {
+  padding: var(--space-xl);
+}
+
+.settings-card-header {
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.settings-card-header h2 {
+  margin: 0 0 var(--space-xs);
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: -0.2px;
   color: var(--ink);
 }
 
-.settings-panel details {
-  margin-bottom: var(--space-lg);
-  padding: var(--space-md);
-  border: 1px solid var(--hairline);
-  border-radius: var(--rounded-md);
-}
-
-.settings-panel summary {
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--ink-secondary);
-  cursor: pointer;
-}
-
-.settings-desc {
-  margin: var(--space-sm) 0 var(--space-md);
-  font-size: 13px;
+.settings-card-header p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 300;
   color: var(--ink-mute);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
 }
 
 .settings-row {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  margin-bottom: var(--space-md);
 }
 
 .settings-row label {
   width: 160px;
   flex-shrink: 0;
   font-size: 14px;
+  font-weight: 400;
   color: var(--ink-secondary);
 }
 
 .settings-row input {
   flex: 1;
   min-width: 260px;
+  height: 40px;
   font-family: inherit;
   font-size: 14px;
   font-weight: 300;
@@ -208,10 +215,21 @@ main.container {
   border-radius: var(--rounded-sm);
   padding: var(--space-sm) var(--space-md);
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .settings-row input:focus {
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(83, 58, 253, 0.08);
+}
+
+.settings-row-action {
+  margin-top: var(--space-xs);
+}
+
+.settings-save-card {
+  padding: var(--space-lg) var(--space-xl);
+  background: var(--canvas-soft);
 }
 
 .settings-actions {
@@ -221,7 +239,8 @@ main.container {
 }
 
 .settings-status {
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 400;
   color: var(--ink-mute);
 }
 
