@@ -501,19 +501,42 @@ td input[type="checkbox"] {
 }
 
 .export-field-wrapper input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
   margin: 0;
   padding: 0;
-  flex: 0 0 18px;
-  accent-color: #533afd;
+  flex: 0 0 16px;
+  border: 2px solid #533afd;
+  border-radius: 3px;
+  background: #ffffff;
   cursor: pointer;
+  position: relative;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.export-field-wrapper input[type="checkbox"]:checked {
+  background: #533afd;
+}
+
+.export-field-wrapper input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .export-field-text {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: calc(100% - 23px);
+  max-width: calc(100% - 21px);
   padding: 7px 10px;
   font-size: 14px;
   font-weight: 400;
