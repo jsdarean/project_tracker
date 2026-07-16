@@ -38,7 +38,10 @@ function renderExportFields() {
   }
   for (const col of columnMeta) {
     const wrapper = document.createElement('div');
-    wrapper.className = 'export-field-item';
+    wrapper.className = 'export-field-wrapper';
+    const text = document.createElement('span');
+    text.className = 'export-field-text';
+    text.textContent = col.comment || col.field;
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.id = `export-field-${col.field}`;
@@ -46,9 +49,9 @@ function renderExportFields() {
     checkbox.checked = currentExportFields.includes(col.field);
     const label = document.createElement('label');
     label.htmlFor = checkbox.id;
-    label.textContent = col.comment || col.field;
+    label.className = 'export-field-hit';
+    wrapper.appendChild(text);
     wrapper.appendChild(checkbox);
-    wrapper.appendChild(label);
     exportFieldsEl.appendChild(wrapper);
   }
 }
