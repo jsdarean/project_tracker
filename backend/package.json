@@ -16,8 +16,5 @@
     "express": "^4.21.2",
     "mysql2": "^3.11.5",
     "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "puppeteer": "^25.3.0"
   }
 }
