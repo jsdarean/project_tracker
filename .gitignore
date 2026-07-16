@@ -13,6 +13,9 @@ testfiles/
 dist/
 docs/screenshots/
 
+# 含敏感截图的操作手册原文件
+docs/*.docx
+
 # 系统文件
 .DS_Store
 Thumbs.db
