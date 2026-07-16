@@ -14,12 +14,10 @@ if not exist ".env" (
 
 echo 正在启动后端服务...
 echo 浏览器访问: http://localhost:3000/
-echo 按 Ctrl+C 可停止服务
+echo 请保持此窗口打开，按 Ctrl+C 可停止服务
 echo.
 npm start
 
-if errorlevel 1 (
-  echo.
-  echo 启动失败，请检查上方错误信息。
-  pause
-)
+echo.
+echo 服务已停止。
+pause
