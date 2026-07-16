@@ -478,9 +478,8 @@ td input[type="checkbox"] {
 }
 
 .export-field-text {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
-  max-width: calc(100% - 26px);
   padding: 7px 10px;
   font-size: 14px;
   font-weight: 400;
