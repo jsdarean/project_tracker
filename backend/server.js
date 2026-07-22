@@ -42,6 +42,10 @@ async function loadSettings() {
     db_password: dbCfg.password,
     db_name: dbCfg.database,
     export_fields: defaultExportFields,
+    watch_tags: [
+      { name: '领导关注', color: '#ea2261' },
+      { name: '涉及考核', color: '#9b6829' },
+    ],
   };
   try {
     const raw = await fs.readFile(SETTINGS_FILE, 'utf8');
@@ -106,6 +110,20 @@ app.post('/api/settings', async (req, res) => {
       ? body.export_fields.filter(f => typeof f === 'string' && f)
       : defaultExportFields;
 
+    // 关注标签配置：保留旧值兜底，过滤非法项
+    let watchTags;
+    if (Array.isArray(body.watch_tags)) {
+      watchTags = body.watch_tags
+        .filter(t => t && typeof t.name === 'string' && t.name.trim())
+        .map(t => ({
+          name: t.name.trim(),
+          color: /^#[0-9a-fA-F]{6}$/.test(t.color || '') ? t.color : '#533afd',
+        }));
+    } else {
+      const old = await loadSettings();
+      watchTags = old.watch_tags;
+    }
+
     if (!folder) {
       return res.status(400).json({ error: '请填写归档文件夹路径' });
     }
@@ -152,6 +170,7 @@ app.post('/api/settings', async (req, res) => {
       db_password: dbPassword,
       db_name: dbName,
       export_fields: exportFields,
+      watch_tags: watchTags,
     };
     await saveSettings(settings);
 
@@ -448,7 +467,7 @@ app.post('/api/projects', async (req, res) => {
 // 列表查询
 app.get('/api/projects', async (req, res) => {
   try {
-    const { status, keyword } = req.query;
+    const { status, keyword, build_level, is_rnd } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const size = Math.max(1, Math.min(100, parseInt(req.query.pageSize, 10) || 20));
     const offset = (page - 1) * size;
@@ -462,6 +481,14 @@ app.get('/api/projects', async (req, res) => {
     if (keyword) {
       sql += ' AND (project_name LIKE ? OR project_code LIKE ? OR doc_number LIKE ?)';
       params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    if (build_level) {
+      sql += ' AND build_level = ?';
+      params.push(build_level);
+    }
+    if (is_rnd) {
+      sql += ' AND is_rnd = ?';
+      params.push(is_rnd);
     }
     // LIMIT/OFFSET 直接拼入 SQL，避免部分 MySQL 版本对占位符的支持问题
     sql += ` ORDER BY id DESC LIMIT ${size} OFFSET ${offset}`;
@@ -477,6 +504,14 @@ app.get('/api/projects', async (req, res) => {
     if (keyword) {
       countSql += ' AND (project_name LIKE ? OR project_code LIKE ? OR doc_number LIKE ?)';
       countParams.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+    if (build_level) {
+      countSql += ' AND build_level = ?';
+      countParams.push(build_level);
+    }
+    if (is_rnd) {
+      countSql += ' AND is_rnd = ?';
+      countParams.push(is_rnd);
     }
     const [countRow] = await query(countSql, countParams);
 
@@ -551,30 +586,56 @@ app.delete('/api/projects/:id', async (req, res) => {
 
 /* ---------- 联系人接口 ---------- */
 
+// 获取地市/公司可选值（用于筛选下拉框）
+app.get('/api/contacts/filters', async (req, res) => {
+  try {
+    const cities = await query("SELECT DISTINCT city FROM contacts WHERE city IS NOT NULL AND city != '' ORDER BY city");
+    const companies = await query("SELECT DISTINCT company FROM contacts WHERE company IS NOT NULL AND company != '' ORDER BY company");
+    res.json({
+      success: true,
+      data: {
+        cities: cities.map(r => r.city),
+        companies: companies.map(r => r.company),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: '获取筛选项失败', message: err.message });
+  }
+});
+
 // 列表查询
 app.get('/api/contacts', async (req, res) => {
   try {
-    const { keyword } = req.query;
+    const { keyword, city, company, sort, order } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const size = Math.max(1, Math.min(100, parseInt(req.query.pageSize, 10) || 20));
     const offset = (page - 1) * size;
 
-    let sql = 'SELECT * FROM contacts WHERE 1=1';
+    let where = ' WHERE 1=1';
     const params = [];
     if (keyword) {
-      sql += ' AND (`name` LIKE ? OR `company` LIKE ? OR `department` LIKE ? OR `phone` LIKE ? OR `related_project` LIKE ?)';
+      where += ' AND (`name` LIKE ? OR `company` LIKE ? OR `department` LIKE ? OR `phone` LIKE ? OR `related_project` LIKE ?)';
       params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
     }
-    sql += ` ORDER BY id DESC LIMIT ${size} OFFSET ${offset}`;
-    const rows = await query(sql, params);
-
-    let countSql = 'SELECT COUNT(*) AS total FROM contacts WHERE 1=1';
-    const countParams = [];
-    if (keyword) {
-      countSql += ' AND (`name` LIKE ? OR `company` LIKE ? OR `department` LIKE ? OR `phone` LIKE ? OR `related_project` LIKE ?)';
-      countParams.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    if (city) {
+      where += ' AND `city` = ?';
+      params.push(city);
     }
-    const [countRow] = await query(countSql, countParams);
+    if (company) {
+      where += ' AND `company` = ?';
+      params.push(company);
+    }
+
+    // 排序字段白名单，防止注入
+    const sortable = { city: 'city', company: 'company' };
+    let orderBy = 'id DESC';
+    if (sortable[sort]) {
+      const dir = order === 'asc' ? 'ASC' : 'DESC';
+      orderBy = `\`${sortable[sort]}\` ${dir}, id DESC`;
+    }
+
+    const rows = await query(`SELECT * FROM contacts${where} ORDER BY ${orderBy} LIMIT ${size} OFFSET ${offset}`, params);
+    const [countRow] = await query(`SELECT COUNT(*) AS total FROM contacts${where}`, params);
 
     res.json({ success: true, data: rows, total: countRow.total });
   } catch (err) {
@@ -642,6 +703,308 @@ app.delete('/api/contacts/:id', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: '删除联系人失败', message: err.message });
+  }
+});
+
+/* ---------- 关注项目接口 ---------- */
+
+// 关注项目列表（关联 projects 表取项目信息）
+app.get('/api/watch-projects', async (req, res) => {
+  try {
+    const { keyword } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const size = Math.max(1, Math.min(100, parseInt(req.query.pageSize, 10) || 20));
+    const offset = (page - 1) * size;
+
+    let where = ' WHERE 1=1';
+    const params = [];
+    if (keyword) {
+      where += ' AND (p.project_name LIKE ? OR p.project_code LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    // 排序字段白名单，默认按立项批复日期从早到晚（空日期排最后）
+    const sortable = {
+      approval_date: 'p.approval_date',
+      project_code: 'p.project_code',
+      project_name: 'p.project_name',
+      project_set: 'p.project_set',
+      project_subset: 'p.project_subset',
+      investment_person: 'p.investment_person',
+      maintenance_person: 'p.maintenance_person',
+    };
+    const sortCol = sortable[req.query.sort] || 'p.approval_date';
+    const sortDir = req.query.order === 'desc' ? 'DESC' : 'ASC';
+    const orderBy = `${sortCol} IS NULL, ${sortCol} ${sortDir}, w.id DESC`;
+
+    const rows = await query(`
+      SELECT w.id, w.project_id, w.watch_type, w.created_at,
+             p.project_code, p.project_name, p.approval_date, p.project_set, p.project_subset,
+             p.investment_person, p.maintenance_person,
+             (SELECT COUNT(*) FROM watch_progress wp WHERE wp.watch_id = w.id) AS progress_count,
+             (SELECT wp.description FROM watch_progress wp WHERE wp.watch_id = w.id ORDER BY wp.id DESC LIMIT 1) AS latest_progress
+      FROM watch_projects w
+      LEFT JOIN projects p ON p.id = w.project_id
+      ${where}
+      ORDER BY ${orderBy} LIMIT ${size} OFFSET ${offset}
+    `, params);
+
+    const [countRow] = await query(`
+      SELECT COUNT(*) AS total FROM watch_projects w LEFT JOIN projects p ON p.id = w.project_id ${where}
+    `, params);
+
+    res.json({ success: true, data: rows, total: countRow.total });
+  } catch (err) {
+    console.error('查询关注项目失败:', err);
+    res.status(500).json({ error: '查询关注项目失败', message: err.message });
+  }
+});
+
+// 添加关注项目
+app.post('/api/watch-projects', async (req, res) => {
+  try {
+    const projectId = parseInt(req.body.project_id, 10);
+    if (!projectId) {
+      return res.status(400).json({ error: '缺少 project_id' });
+    }
+    const watchType = String(req.body.watch_type || '').trim() || null;
+    const rows = await query('SELECT id FROM projects WHERE id = ?', [projectId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: '项目不存在' });
+    }
+    try {
+      const result = await query('INSERT INTO watch_projects (project_id, watch_type) VALUES (?, ?)', [projectId, watchType]);
+      res.json({ success: true, id: result.insertId });
+    } catch (dupErr) {
+      if (dupErr.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ error: '该项目已在关注列表中' });
+      }
+      throw dupErr;
+    }
+  } catch (err) {
+    console.error('添加关注项目失败:', err);
+    res.status(500).json({ error: '添加关注项目失败', message: err.message });
+  }
+});
+
+// 修改关注类型
+app.put('/api/watch-projects/:id', async (req, res) => {
+  try {
+    const watchType = String(req.body.watch_type || '').trim() || null;
+    await query('UPDATE watch_projects SET watch_type = ? WHERE id = ?', [watchType, req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '修改关注类型失败', message: err.message });
+  }
+});
+
+// 删除关注项目（同时删除其进展记录）
+app.delete('/api/watch-projects/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    await query('DELETE FROM watch_progress WHERE watch_id = ?', [id]);
+    await query('DELETE FROM watch_projects WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '删除关注项目失败', message: err.message });
+  }
+});
+
+// 某关注项目的进展列表
+app.get('/api/watch-projects/:id/progress', async (req, res) => {
+  try {
+    const rows = await query(
+      'SELECT id, watch_id, description, created_at, updated_at FROM watch_progress WHERE watch_id = ? ORDER BY id DESC',
+      [req.params.id]
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ error: '查询进展失败', message: err.message });
+  }
+});
+
+// 新增进展
+app.post('/api/watch-projects/:id/progress', async (req, res) => {
+  try {
+    const description = String(req.body.description || '').trim();
+    if (!description) {
+      return res.status(400).json({ error: '说明不能为空' });
+    }
+    const result = await query(
+      'INSERT INTO watch_progress (watch_id, description) VALUES (?, ?)',
+      [req.params.id, description]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (err) {
+    res.status(500).json({ error: '新增进展失败', message: err.message });
+  }
+});
+
+// 修改进展
+app.put('/api/watch-progress/:id', async (req, res) => {
+  try {
+    const description = String(req.body.description || '').trim();
+    if (!description) {
+      return res.status(400).json({ error: '说明不能为空' });
+    }
+    await query('UPDATE watch_progress SET description = ? WHERE id = ?', [description, req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '修改进展失败', message: err.message });
+  }
+});
+
+// 删除进展
+app.delete('/api/watch-progress/:id', async (req, res) => {
+  try {
+    await query('DELETE FROM watch_progress WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '删除进展失败', message: err.message });
+  }
+});
+
+/* ---------- 公司通讯录（原 WorkBuddy 项目集成） ---------- */
+
+function formatDateTime(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
+// 搜索公司通讯录人员（默认最新批次），用于联系人页面复制信息
+app.get('/api/company-contacts/search', async (req, res) => {
+  try {
+    const keyword = String(req.query.keyword || '').trim();
+    if (!keyword) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // 优先使用指定批次，否则取最新批次
+    let batchId = String(req.query.batch_id || '').trim();
+    if (!batchId) {
+      const batchRows = await query(`
+        SELECT batch_id FROM oa_contacts.personnel
+        WHERE batch_id IS NOT NULL AND batch_id != ''
+        GROUP BY batch_id ORDER BY batch_id DESC LIMIT 1
+      `);
+      if (batchRows.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+      batchId = batchRows[0].batch_id;
+    }
+
+    const like = `%${keyword}%`;
+    const rows = await query(`
+      SELECT name, title, mobile_phone, short_number, email, dept_path
+      FROM oa_contacts.personnel
+      WHERE batch_id = ? AND (
+        name LIKE ? OR mobile_phone LIKE ? OR short_number LIKE ? OR email LIKE ? OR dept_path LIKE ?
+      )
+      ORDER BY name
+      LIMIT 10
+    `, [batchId, like, like, like, like, like]);
+
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('搜索公司通讯录人员失败:', err);
+    res.status(500).json({ error: '搜索公司通讯录人员失败', message: err.message });
+  }
+});
+
+// 所有批次
+app.get('/api/company-contacts/batch_ids', async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT batch_id, COUNT(*) AS cnt, MAX(scraped_at) AS latest
+      FROM oa_contacts.personnel
+      WHERE batch_id IS NOT NULL AND batch_id != ''
+      GROUP BY batch_id
+      ORDER BY batch_id DESC
+    `);
+    const data = rows.map(r => ({
+      batch_id: r.batch_id,
+      count: r.cnt,
+      latest: formatDateTime(r.latest),
+    }));
+    res.json(data);
+  } catch (err) {
+    console.error('查询通讯录批次失败:', err);
+    res.status(500).json({ error: '查询通讯录批次失败', message: err.message });
+  }
+});
+
+// 部门树
+app.get('/api/company-contacts/departments', async (req, res) => {
+  try {
+    const rows = await query(`
+      SELECT dept_path, dept_name, level, sort_order
+      FROM oa_contacts.departments
+      ORDER BY level, sort_order
+    `);
+    res.json({ data: rows });
+  } catch (err) {
+    console.error('查询通讯录部门失败:', err);
+    res.status(500).json({ error: '查询通讯录部门失败', message: err.message });
+  }
+});
+
+// 人员列表
+app.get('/api/company-contacts/personnel', async (req, res) => {
+  try {
+    const batch_id = req.query.batch_id;
+    if (!batch_id) {
+      return res.status(400).json({ error: 'batch_id is required' });
+    }
+
+    // 构建部门排序映射
+    const deptRows = await query(`
+      SELECT dept_path, sort_order
+      FROM oa_contacts.departments
+      ORDER BY level, sort_order
+    `);
+    const pathSort = {};
+    for (const r of deptRows) {
+      pathSort[r.dept_path] = r.sort_order != null ? r.sort_order : 9999;
+    }
+    const deptSortMap = {};
+    for (const dept_path in pathSort) {
+      const parts = dept_path.split(' > ');
+      const sortParts = [];
+      let current = '';
+      for (const part of parts) {
+        current = current ? `${current} > ${part}` : part;
+        sortParts.push(String(pathSort[current] || 9999).padStart(5, '0'));
+      }
+      deptSortMap[dept_path] = sortParts.join('.');
+    }
+    const hasDeptSort = deptRows.length > 0;
+
+    const rows = await query(`
+      SELECT id, dept_path, name, title, mobile_phone, short_number, email,
+             scraped_at, batch_id, channel, sort_order
+      FROM oa_contacts.personnel
+      WHERE batch_id = ?
+    `, [batch_id]);
+
+    for (const row of rows) {
+      if (row.scraped_at) row.scraped_at = formatDateTime(row.scraped_at);
+      row.dept_sort_key = deptSortMap[row.dept_path] || '';
+      if (row.sort_order == null) row.sort_order = 9999;
+    }
+
+    if (hasDeptSort) {
+      rows.sort((a, b) => (a.dept_sort_key > b.dept_sort_key ? 1 : a.dept_sort_key < b.dept_sort_key ? -1 : 0)
+        || (a.sort_order - b.sort_order));
+    } else {
+      rows.sort((a, b) => (a.dept_path || '').localeCompare(b.dept_path || '') || (a.sort_order - b.sort_order));
+    }
+
+    res.json({ batch_id, total: rows.length, data: rows });
+  } catch (err) {
+    console.error('查询通讯录人员失败:', err);
+    res.status(500).json({ error: '查询通讯录人员失败', message: err.message });
   }
 });
 

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>关注项目 - 项目信息查询</title>
+  <link rel="stylesheet" href="style.css?v=28">
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-mesh" aria-hidden="true"></div>
+    <div class="container hero-content">
+      <header class="page-header">
+        <div class="page-title">
+          <h1>关注项目</h1>
+        </div>
+        <a href="index.html" class="btn-secondary settings-btn">返回查询</a>
+      </header>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="toolbar card">
+      <input type="text" id="searchInput" placeholder="搜索项目编码、项目名称…">
+      <button id="addBtn" class="btn-primary">添加关注项目</button>
+    </div>
+
+    <div id="loading" class="loading card">加载中...</div>
+    <div id="error" class="error card" style="display: none;"></div>
+
+    <div class="table-wrapper card">
+      <table id="watchTable">
+        <thead>
+          <tr id="headerRow"></tr>
+        </thead>
+        <tbody>
+          <!-- 动态填充 -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button id="prevBtn" class="btn-secondary">上一页</button>
+      <span id="pageInfo">第 1 页</span>
+      <button id="nextBtn" class="btn-secondary">下一页</button>
+    </div>
+  </main>
+
+  <!-- 添加关注项目弹窗 -->
+  <div id="addModal" class="modal-overlay" style="display: none;">
+    <div class="modal card">
+      <div class="modal-header">
+        <h2>添加关注项目</h2>
+        <button id="addModalClose" class="btn-small" title="关闭">&times;</button>
+      </div>
+      <div class="modal-body add-modal-body">
+        <div class="form-group full-width">
+          <input type="text" id="projectSearchInput" placeholder="输入项目编码或项目名称搜索…">
+        </div>
+        <div class="form-group full-width">
+          <label>关注类型（可多选）</label>
+          <div id="addTagSelect" class="watch-tags-select"></div>
+        </div>
+        <div id="projectSearchResult" class="project-search-result"></div>
+      </div>
+      <div class="modal-footer">
+        <span id="addModalStatus" class="settings-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 关注原因及进展弹窗 -->
+  <div id="progressModal" class="modal-overlay" style="display: none;">
+    <div class="modal card">
+      <div class="modal-header">
+        <h2 id="progressModalTitle">关注原因及进展</h2>
+        <button id="progressModalClose" class="btn-small" title="关闭">&times;</button>
+      </div>
+      <div class="modal-body progress-modal-body">
+        <div class="form-group full-width">
+          <textarea id="newProgressText" rows="3" placeholder="录入关注原因或进展说明…"></textarea>
+        </div>
+        <div class="progress-add-row">
+          <button id="addProgressBtn" class="btn-primary">录入</button>
+        </div>
+        <table class="progress-table">
+          <thead>
+            <tr><th>录入时间</th><th>说明</th><th>操作</th></tr>
+          </thead>
+          <tbody id="progressList"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <span id="progressModalStatus" class="settings-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 变更关注类型弹窗 -->
+  <div id="tagModal" class="modal-overlay" style="display: none;">
+    <div class="modal card">
+      <div class="modal-header">
+        <h2 id="tagModalTitle">变更关注类型</h2>
+        <button id="tagModalClose" class="btn-small" title="关闭">&times;</button>
+      </div>
+      <div class="modal-body" style="display: block;">
+        <div id="editTagSelect" class="watch-tags-select"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="saveTagBtn" class="btn-primary">保存</button>
+        <button id="cancelTagBtn" class="btn-secondary">取消</button>
+        <span id="tagModalStatus" class="settings-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="watch.js?v=4"></script>
+</body>
+</html>

@@ -6,6 +6,8 @@ let total = 0;
 let currentRows = [];
 let editingId = null;
 let modalDraft = {};
+let sortField = '';
+let sortOrder = 'asc';
 
 const fields = [
   { key: 'city', label: '地市' },
@@ -24,6 +26,8 @@ const errorEl = document.getElementById('error');
 const tableHeadRow = document.getElementById('headerRow');
 const tableBody = document.querySelector('#contactsTable tbody');
 const searchInput = document.getElementById('searchInput');
+const cityFilter = document.getElementById('cityFilter');
+const companyFilter = document.getElementById('companyFilter');
 const addBtn = document.getElementById('addBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
@@ -36,19 +40,56 @@ const saveBtn = document.getElementById('saveBtn');
 const cancelBtn = document.getElementById('cancelBtn');
 const modalStatus = document.getElementById('modalStatus');
 
-function init() {
+async function init() {
   renderHeader();
   buildModalForm();
   bindEvents();
+  await loadFilterOptions();
   loadData();
 }
 
 function renderHeader() {
-  tableHeadRow.innerHTML = fields.map(f => `<th>${escapeHtml(f.label)}</th>`).join('') + '<th>操作</th>';
+  tableHeadRow.innerHTML = fields.map(f => {
+    if (f.key === 'city' || f.key === 'company') {
+      const indicator = sortField === f.key ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : '';
+      return `<th class="sortable" data-sort="${f.key}">${escapeHtml(f.label)}${indicator}</th>`;
+    }
+    return `<th>${escapeHtml(f.label)}</th>`;
+  }).join('') + '<th>操作</th>';
+}
+
+async function loadFilterOptions() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/contacts/filters`);
+    if (!resp.ok) return;
+    const result = await resp.json();
+    if (!result.success) return;
+    const { cities = [], companies = [] } = result.data || {};
+    for (const c of cities) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      cityFilter.appendChild(opt);
+    }
+    for (const c of companies) {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      companyFilter.appendChild(opt);
+    }
+  } catch (err) {
+    console.error('加载筛选项失败:', err);
+  }
 }
 
 function buildModalForm() {
-  modalForm.innerHTML = fields.map(f => `
+  modalForm.innerHTML = `
+    <div class="form-group full-width oa-copy-block">
+      <label for="oaSearchInput">从公司通讯录复制</label>
+      <input type="text" id="oaSearchInput" placeholder="搜索姓名、电话、短号、邮箱，选中后自动填充…" autocomplete="off">
+      <div id="oaSearchResults" class="oa-search-results"></div>
+    </div>
+  ` + fields.map(f => `
     <div class="form-group ${f.key === 'remarks' ? 'full-width' : ''}">
       <label for="field-${f.key}">${escapeHtml(f.label)}${f.required ? ' <span class="required">*</span>' : ''}</label>
       ${f.key === 'remarks'
@@ -64,6 +105,71 @@ function buildModalForm() {
     const key = el.id.replace('field-', '');
     modalDraft[key] = el.value;
   });
+
+  // 公司通讯录搜索（防抖）
+  const oaInput = document.getElementById('oaSearchInput');
+  let oaTimer = null;
+  oaInput.addEventListener('input', () => {
+    clearTimeout(oaTimer);
+    oaTimer = setTimeout(searchOaContacts, 300);
+  });
+}
+
+async function searchOaContacts() {
+  const input = document.getElementById('oaSearchInput');
+  const resultsEl = document.getElementById('oaSearchResults');
+  const keyword = input.value.trim();
+  if (!keyword) {
+    resultsEl.innerHTML = '';
+    return;
+  }
+  try {
+    const resp = await fetch(`${API_BASE}/api/company-contacts/search?keyword=${encodeURIComponent(keyword)}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || '搜索失败');
+    const rows = result.data || [];
+    if (rows.length === 0) {
+      resultsEl.innerHTML = '<div class="empty">公司通讯录中未找到匹配人员</div>';
+      return;
+    }
+    resultsEl.innerHTML = rows.map((p, i) => `
+      <div class="project-search-item oa-search-item" data-idx="${i}">
+        <div class="project-search-info">
+          <div class="project-search-code">${escapeHtml(p.name || '')}${p.title ? '（' + escapeHtml(p.title) + '）' : ''}</div>
+          <div class="project-search-name" title="${escapeHtml(p.dept_path || '')}">${escapeHtml(p.dept_path || '')} ${escapeHtml(p.mobile_phone || p.short_number || '')}</div>
+        </div>
+      </div>
+    `).join('');
+    resultsEl.querySelectorAll('.oa-search-item').forEach(item => {
+      item.addEventListener('click', () => fillFromOa(rows[Number(item.dataset.idx)]));
+    });
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="empty">搜索失败：${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function fillFromOa(person) {
+  // 公司统一为江苏移动；地市按部门第一级判断：XX分公司取地市名，其余为省本部
+  const firstSeg = String(person.dept_path || '').split(' > ')[0].trim();
+  const city = firstSeg.endsWith('分公司') ? firstSeg.replace(/分公司$/, '') : '省本部';
+  const mapping = {
+    name: person.name,
+    phone: person.mobile_phone || person.short_number,
+    email: person.email,
+    department: person.dept_path,
+    position: person.title,
+    company: '江苏移动',
+    city: city,
+  };
+  for (const key of Object.keys(mapping)) {
+    const el = document.getElementById(`field-${key}`);
+    if (!el) continue;
+    el.value = mapping[key] || '';
+    if (!editingId) modalDraft[key] = el.value;
+  }
+  document.getElementById('oaSearchResults').innerHTML = '';
+  document.getElementById('oaSearchInput').value = '';
 }
 
 function bindEvents() {
@@ -77,6 +183,31 @@ function bindEvents() {
 
   searchInput.addEventListener('input', () => {
     currentPage = 1;
+    loadData();
+  });
+
+  cityFilter.addEventListener('change', () => {
+    currentPage = 1;
+    loadData();
+  });
+
+  companyFilter.addEventListener('change', () => {
+    currentPage = 1;
+    loadData();
+  });
+
+  tableHeadRow.addEventListener('click', (e) => {
+    const th = e.target.closest('th.sortable');
+    if (!th) return;
+    const field = th.getAttribute('data-sort');
+    if (sortField === field) {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortField = field;
+      sortOrder = 'asc';
+    }
+    currentPage = 1;
+    renderHeader();
     loadData();
   });
 
@@ -116,6 +247,12 @@ async function loadData() {
     const keyword = searchInput.value.trim();
     const params = new URLSearchParams({ page: currentPage, pageSize });
     if (keyword) params.append('keyword', keyword);
+    if (cityFilter.value) params.append('city', cityFilter.value);
+    if (companyFilter.value) params.append('company', companyFilter.value);
+    if (sortField) {
+      params.append('sort', sortField);
+      params.append('order', sortOrder);
+    }
 
     const resp = await fetch(`${API_BASE}/api/contacts?${params.toString()}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);

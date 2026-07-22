@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>联系人管理 - 项目信息查询</title>
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
   <div class="hero">
@@ -13,7 +13,6 @@
       <header class="page-header">
         <div class="page-title">
           <h1>联系人管理</h1>
-          <p>本地 MySQL <code>project_tracker.contacts</code> 表中的联系人数据</p>
         </div>
         <a href="index.html" class="btn-secondary settings-btn">返回查询</a>
       </header>
@@ -23,6 +22,8 @@
   <main class="container">
     <div class="toolbar card">
       <input type="text" id="searchInput" placeholder="搜索姓名、公司、部门、电话、关联项目…">
+      <select id="cityFilter"><option value="">全部地市</option></select>
+      <select id="companyFilter"><option value="">全部公司</option></select>
       <button id="addBtn" class="btn-primary">新增联系人</button>
     </div>
 
@@ -62,6 +63,6 @@
     </div>
   </div>
 
-  <script src="contacts.js?v=24"></script>
+  <script src="contacts.js?v=27"></script>
 </body>
 </html>

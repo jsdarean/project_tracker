@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>设置 - 项目信息查询</title>
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="style.css?v=28">
 </head>
 <body>
   <div class="hero">
@@ -83,6 +83,24 @@
       </div>
     </section>
 
+    <section class="card settings-card">
+      <div class="settings-card-header">
+        <h2>关注标签</h2>
+        <p>配置“关注项目”页面可选的关注类型标签及颜色，添加、变更关注时勾选使用。</p>
+      </div>
+      <div class="settings-row" style="align-items: flex-start;">
+        <label style="padding-top: 4px;">标签列表</label>
+        <div class="watch-tags-area">
+          <div id="watchTagsList" class="watch-tags-list"></div>
+          <div class="watch-tags-add">
+            <input type="text" id="newTagName" placeholder="新标签名称">
+            <input type="color" id="newTagColor" value="#533afd">
+            <button type="button" id="addTagBtn" class="btn-secondary">添加标签</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="card settings-save-card">
       <div class="settings-actions">
         <button type="button" id="saveSettingsBtn" class="btn-primary">保存设置</button>
@@ -91,6 +109,6 @@
     </section>
   </main>
 
-  <script src="settings.js"></script>
+  <script src="settings.js?v=2"></script>
 </body>
 </html>

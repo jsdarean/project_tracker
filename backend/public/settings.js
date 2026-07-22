@@ -15,6 +15,7 @@ const exportFieldsEl = document.getElementById('exportFields');
 
 let columnMeta = [];
 let currentExportFields = [];
+let watchTags = [];
 
 async function loadColumns() {
   try {
@@ -59,6 +60,69 @@ function getSelectedExportFields() {
   return Array.from(checkboxes).map(cb => cb.value);
 }
 
+/* ---------- 关注标签配置 ---------- */
+
+const watchTagsListEl = document.getElementById('watchTagsList');
+const newTagNameInput = document.getElementById('newTagName');
+const newTagColorInput = document.getElementById('newTagColor');
+const addTagBtn = document.getElementById('addTagBtn');
+
+function renderWatchTags() {
+  watchTagsListEl.innerHTML = '';
+  if (watchTags.length === 0) {
+    watchTagsListEl.innerHTML = '<div class="empty">暂无标签</div>';
+    return;
+  }
+  watchTags.forEach((tag, idx) => {
+    const item = document.createElement('div');
+    item.className = 'watch-tag-item';
+    item.innerHTML = `
+      <span class="watch-tag-dot" style="background:${tag.color}"></span>
+      <span class="watch-tag-name">${escapeHtml(tag.name)}</span>
+      <input type="color" class="watch-tag-color" data-idx="${idx}" value="${tag.color}" title="修改颜色">
+      <button type="button" class="btn-small watch-tag-del" data-idx="${idx}">删除</button>
+    `;
+    watchTagsListEl.appendChild(item);
+  });
+
+  watchTagsListEl.querySelectorAll('.watch-tag-color').forEach(input => {
+    input.addEventListener('change', () => {
+      watchTags[Number(input.dataset.idx)].color = input.value;
+      renderWatchTags();
+    });
+  });
+  watchTagsListEl.querySelectorAll('.watch-tag-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      watchTags.splice(Number(btn.dataset.idx), 1);
+      renderWatchTags();
+    });
+  });
+}
+
+addTagBtn.addEventListener('click', () => {
+  const name = newTagNameInput.value.trim();
+  if (!name) {
+    showSettingsStatus('请填写标签名称', 'error');
+    return;
+  }
+  if (watchTags.some(t => t.name === name)) {
+    showSettingsStatus('标签名称已存在', 'error');
+    return;
+  }
+  watchTags.push({ name, color: newTagColorInput.value || '#533afd' });
+  newTagNameInput.value = '';
+  renderWatchTags();
+});
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 async function loadSettingsUI() {
   try {
     await loadColumns();
@@ -74,8 +138,10 @@ async function loadSettingsUI() {
       dbPasswordInput.value = result.data.db_password || '';
       dbNameInput.value = result.data.db_name || '';
       currentExportFields = Array.isArray(result.data.export_fields) ? result.data.export_fields : [];
+      watchTags = Array.isArray(result.data.watch_tags) ? result.data.watch_tags : [];
     }
     renderExportFields();
+    renderWatchTags();
   } catch (err) {
     console.error('加载设置失败:', err);
     showSettingsStatus('加载设置失败：' + err.message, 'error');
@@ -123,6 +189,7 @@ async function saveAllSettings() {
     db_password: dbPasswordInput.value,
     db_name: dbNameInput.value.trim(),
     export_fields: getSelectedExportFields(),
+    watch_tags: watchTags,
   };
 
   if (!payload.archive_folder) {

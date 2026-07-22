@@ -110,6 +110,24 @@ const contactColumns = [
   '`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT \'更新时间\'',
 ];
 
+// 关注项目表字段定义（project_id 关联 projects.id）
+const watchProjectColumns = [
+  '`id` INT NOT NULL AUTO_INCREMENT COMMENT \'序号\'',
+  '`project_id` INT NOT NULL COMMENT \'项目 ID\'',
+  '`watch_type` VARCHAR(200) DEFAULT NULL COMMENT \'关注类型\'',
+  '`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT \'创建时间\'',
+  '`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT \'更新时间\'',
+];
+
+// 关注原因及进展表字段定义（watch_id 关联 watch_projects.id）
+const watchProgressColumns = [
+  '`id` INT NOT NULL AUTO_INCREMENT COMMENT \'序号\'',
+  '`watch_id` INT NOT NULL COMMENT \'关注项目 ID\'',
+  '`description` TEXT COMMENT \'说明\'',
+  '`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT \'录入时间\'',
+  '`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT \'更新时间\'',
+];
+
 function parseColumnName(colDef) {
   const m = colDef.match(/^`([^`]+)`/);
   return m ? m[1] : '';
@@ -191,6 +209,40 @@ async function initDatabase() {
     await db.query(alterStmt);
   }
 
+  // 创建关注项目表
+  const createWatchSql = `
+    CREATE TABLE IF NOT EXISTS \`watch_projects\` (
+      ${watchProjectColumns.join(',\n      ')},
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`uk_watch_project_id\` (\`project_id\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `;
+  await query(createWatchSql);
+
+  // 为已存在的关注项目表补充缺失字段
+  const [existingWatchCols] = await db.execute(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`,
+    [dbName, 'watch_projects']
+  );
+  const existingWatchSet = new Set(existingWatchCols.map(c => c.COLUMN_NAME));
+  for (const colDef of watchProjectColumns) {
+    const colName = parseColumnName(colDef);
+    if (!existingWatchSet.has(colName)) {
+      await db.query(`ALTER TABLE \`watch_projects\` ADD COLUMN ${colDef}`);
+      console.log('新增关注项目表字段:', colName);
+    }
+  }
+
+  // 创建关注原因及进展表
+  const createProgressSql = `
+    CREATE TABLE IF NOT EXISTS \`watch_progress\` (
+      ${watchProgressColumns.join(',\n      ')},
+      PRIMARY KEY (\`id\`),
+      KEY \`idx_progress_watch_id\` (\`watch_id\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `;
+  await query(createProgressSql);
+
   console.log('数据库与表初始化完成:', dbName);
 }
 
@@ -200,6 +252,8 @@ module.exports = {
   initDatabase,
   projectColumns,
   contactColumns,
+  watchProjectColumns,
+  watchProgressColumns,
   setDbConfig,
   getDbConfig,
 };

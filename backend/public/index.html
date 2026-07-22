@@ -13,10 +13,11 @@
       <header class="page-header">
         <div class="page-title">
           <h1>项目信息查询</h1>
-          <p>本机 MySQL <code>project_tracker.projects</code> 表中的立项批复数据</p>
         </div>
         <button id="editBtn" class="btn-secondary settings-btn">变更</button>
+        <a href="watch.html" class="btn-secondary settings-btn">关注项目</a>
         <a href="contacts.html" class="btn-secondary settings-btn">联系人</a>
+        <a href="company_contacts.html" class="btn-secondary settings-btn">公司通讯录</a>
         <a href="settings.html" class="btn-secondary settings-btn">设置</a>
       </header>
     </div>
@@ -29,6 +30,17 @@
         <option value="">全部状态</option>
         <option value="saved">已提交</option>
         <option value="draft">草稿</option>
+      </select>
+      <select id="buildLevelFilter">
+        <option value="">全部建设层级</option>
+        <option value="省建">省建</option>
+        <option value="市建">市建</option>
+        <option value="一干">一干</option>
+      </select>
+      <select id="isRndFilter">
+        <option value="">全部研发状态</option>
+        <option value="研发">研发</option>
+        <option value="非研发">非研发</option>
       </select>
       <button id="refreshBtn" class="btn-primary">刷新</button>
       <button id="exportBtn" class="btn-secondary">导出 Excel</button>
@@ -55,7 +67,6 @@
     </div>
   </main>
 
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=27"></script>
 </body>
 </html>

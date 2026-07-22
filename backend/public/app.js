@@ -1,7 +1,7 @@
 const API_BASE = window.location.origin;
 
 let currentPage = 1;
-const pageSize = 20;
+const pageSize = 10;
 let total = 0;
 let currentRows = [];
 const selectedIds = new Set();
@@ -46,6 +46,8 @@ const tableHeadRow = document.getElementById('headerRow');
 const tableBody = document.querySelector('#projectsTable tbody');
 const searchInput = document.getElementById('searchInput');
 const statusFilter = document.getElementById('statusFilter');
+const buildLevelFilter = document.getElementById('buildLevelFilter');
+const isRndFilter = document.getElementById('isRndFilter');
 const refreshBtn = document.getElementById('refreshBtn');
 const exportBtn = document.getElementById('exportBtn');
 const editBtn = document.getElementById('editBtn');
@@ -124,9 +126,13 @@ async function loadData() {
   try {
     const keyword = searchInput.value.trim();
     const status = statusFilter.value;
+    const buildLevel = buildLevelFilter.value;
+    const isRnd = isRndFilter.value;
     const params = new URLSearchParams({ page: currentPage, pageSize });
     if (keyword) params.append('keyword', keyword);
     if (status) params.append('status', status);
+    if (buildLevel) params.append('build_level', buildLevel);
+    if (isRnd) params.append('is_rnd', isRnd);
 
     const resp = await fetch(`${API_BASE}/api/projects?${params.toString()}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -253,9 +259,29 @@ function updateSelectAllState() {
   selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < ids.length;
 }
 
-function exportToExcel() {
-  if (typeof XLSX === 'undefined') {
-    alert('Excel 导出库加载失败，请检查网络后重试。');
+// Excel 导出库本地懒加载，避免页面加载时访问外部 CDN 拖慢页面
+let xlsxLoadingPromise = null;
+function loadXlsx() {
+  if (typeof XLSX !== 'undefined') return Promise.resolve();
+  if (xlsxLoadingPromise) return xlsxLoadingPromise;
+  xlsxLoadingPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'vendor/xlsx.full.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => {
+      xlsxLoadingPromise = null;
+      reject(new Error('Excel 导出库加载失败'));
+    };
+    document.head.appendChild(script);
+  });
+  return xlsxLoadingPromise;
+}
+
+async function exportToExcel() {
+  try {
+    await loadXlsx();
+  } catch (err) {
+    alert('Excel 导出库加载失败，请检查后端服务后重试。');
     return;
   }
 
@@ -396,6 +422,16 @@ searchInput.addEventListener('input', () => {
 });
 
 statusFilter.addEventListener('change', () => {
+  currentPage = 1;
+  loadData();
+});
+
+buildLevelFilter.addEventListener('change', () => {
+  currentPage = 1;
+  loadData();
+});
+
+isRndFilter.addEventListener('change', () => {
   currentPage = 1;
   loadData();
 });

@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>江苏公司 - 部门通讯录</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", Tahoma, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            min-width: 1200px;
+        }
+
+        /* ===================== Top Header ===================== */
+        .top-header {
+            height: 56px;
+            background: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            flex-shrink: 0;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .breadcrumb a {
+            color: #999;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            color: #1890ff;
+        }
+
+        .breadcrumb .current {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .top-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            position: relative;
+            width: 360px;
+        }
+
+        .search-box input {
+            width: 100%;
+            height: 34px;
+            padding: 0 34px 0 12px;
+            border: 1px solid #e8e8e8;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+            background: #f5f7fa;
+            transition: all 0.2s;
+        }
+
+        .search-box input:focus {
+            background: #fff;
+            border-color: #1890ff;
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .search-results {
+            position: fixed;
+            top: 56px;
+            left: 20px;
+            right: 20px;
+            margin-top: 6px;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+            max-height: 420px;
+            overflow-y: auto;
+            overflow-x: auto;
+            z-index: 1000;
+            display: none;
+            min-width: 1800px;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-results .result-header {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #999;
+            border-bottom: 1px solid #f0f0f0;
+            background: #fafafa;
+        }
+
+        .search-results .result-item {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            white-space: nowrap;
+        }
+
+        .search-results .result-item:hover,
+        .search-results .result-item.active {
+            background: #e6f7ff;
+        }
+
+        .search-results .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-results .result-main {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-results .result-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            width: 120px;
+            flex-shrink: 0;
+        }
+
+        .search-results .result-dept {
+            font-size: 13px;
+            color: #666;
+            width: 500px;
+            flex-shrink: 0;
+            overflow: visible;
+        }
+
+        .search-results .result-title {
+            font-size: 13px;
+            color: #666;
+            width: 450px;
+            flex-shrink: 0;
+            overflow: visible;
+        }
+
+        .search-results .result-contacts {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 13px;
+            color: #666;
+            font-family: "Consolas", "Courier New", monospace;
+            flex-shrink: 0;
+        }
+
+        .search-results .result-contacts span {
+            min-width: 150px;
+            flex-shrink: 0;
+        }
+
+        .search-results .result-contacts span:last-child {
+            min-width: 300px;
+        }
+
+        .search-results .result-contacts .empty {
+            color: #ccc;
+        }
+
+        .search-results .no-results {
+            padding: 24px;
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+        }
+
+        .search-results .more-results {
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            background: #fafafa;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .batch-select {
+            height: 34px;
+            padding: 0 28px 0 12px;
+            border: 1px solid #e8e8e8;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #f5f7fa;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23999' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            outline: none;
+        }
+
+        .batch-select:focus {
+            border-color: #1890ff;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            height: 34px;
+            padding: 0 14px;
+            border: 1px solid #1890ff;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1890ff;
+            background: #fff;
+            text-decoration: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .back-link:hover {
+            background: #e6f7ff;
+        }
+
+        /* ===================== Main Layout ===================== */
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 16px;
+            gap: 16px;
+        }
+
+        /* ===================== Left Sidebar ===================== */
+        .sidebar {
+            width: 260px;
+            background: #fff;
+            border-radius: 6px;
+            border: 1px solid #e8e8e8;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .company-header {
+            height: 56px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            flex-shrink: 0;
+        }
+
+        .company-icon {
+            width: 32px;
+            height: 32px;
+            background: #e6f7ff;
+            color: #1890ff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .company-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .dept-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .tree-node {
+            user-select: none;
+        }
+
+        .tree-row {
+            display: flex;
+            align-items: center;
+            height: 38px;
+            padding: 0 12px 0 16px;
+            cursor: pointer;
+            transition: background 0.15s;
+            color: #555;
+        }
+
+        .tree-row:hover {
+            background: #f5f7fa;
+        }
+
+        .tree-row.selected {
+            background: #e6f7ff;
+            color: #1890ff;
+            font-weight: 500;
+        }
+
+        .tree-row .arrow {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        .tree-row .arrow.has-children {
+            color: #666;
+        }
+
+        .tree-row .arrow.expanded {
+            transform: rotate(90deg);
+        }
+
+        .tree-row .arrow-placeholder {
+            width: 16px;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .tree-row .dept-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .tree-children {
+            display: none;
+        }
+
+        .tree-children.expanded {
+            display: block;
+        }
+
+        .tree-node .tree-children .tree-row {
+            padding-left: 38px;
+        }
+
+        .tree-node .tree-children .tree-children .tree-row {
+            padding-left: 60px;
+        }
+
+        .tree-node .tree-children .tree-children .tree-children .tree-row {
+            padding-left: 82px;
+        }
+
+        /* ===================== Right Content ===================== */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .phone-banner {
+            height: 44px;
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1890ff;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .phone-banner:hover {
+            background: #bae7ff;
+        }
+
+        .phone-banner .arrow {
+            margin-left: 6px;
+            font-size: 12px;
+        }
+
+        .phone-numbers {
+            display: none;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .phone-numbers.show {
+            display: block;
+        }
+
+        .phone-numbers .label {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .phone-numbers .item {
+            font-size: 14px;
+            color: #333;
+            padding: 4px 0;
+            font-family: "Consolas", monospace;
+        }
+
+        .info-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .current-org {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .current-org .org-icon {
+            color: #1890ff;
+            font-size: 15px;
+        }
+
+        .current-org .path-content {
+            color: #333;
+            font-weight: 500;
+        }
+
+        .current-org .path-content .current-dept {
+            color: #1890ff;
+            font-weight: 600;
+        }
+
+        .current-org .path-content .sep {
+            color: #999;
+            margin: 0 4px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-toggle button {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #e8e8e8;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button:hover {
+            border-color: #1890ff;
+            color: #1890ff;
+        }
+
+        .view-toggle button.active {
+            background: #1890ff;
+            color: #fff;
+            border-color: #1890ff;
+        }
+
+        .stats {
+            font-size: 13px;
+            color: #999;
+            margin-left: 12px;
+        }
+
+        .stats .num {
+            color: #1890ff;
+            font-weight: 600;
+        }
+
+        /* ===================== Table ===================== */
+        .table-card {
+            flex: 1;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .table-wrapper {
+            flex: 1;
+            overflow: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            height: 48px;
+            padding: 0 16px;
+            background: #fafafa;
+            color: #666;
+            font-weight: 600;
+            text-align: left;
+            border-bottom: 1px solid #e8e8e8;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.1s;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        tbody tr:hover {
+            background: #e6f7ff;
+        }
+
+        tbody td {
+            height: 48px;
+            padding: 0 16px;
+            color: #555;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        tbody td.name-cell {
+            color: #333;
+            font-weight: 500;
+        }
+
+        tbody td.title-cell {
+            max-width: 180px;
+            white-space: normal;
+            line-height: 1.4;
+            word-break: break-all;
+            padding: 8px 16px;
+        }
+
+        tbody td.title-cell .title-line {
+            display: block;
+        }
+
+        tbody td.phone-cell {
+            font-family: "Consolas", "Courier New", monospace;
+            color: #333;
+        }
+
+        tbody td.email-cell {
+            color: #666;
+            max-width: 220px;
+        }
+
+        tbody td.empty {
+            color: #ccc;
+        }
+
+        tbody td .copy-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #e8e8e8;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        tbody td .copy-btn:hover {
+            border-color: #1890ff;
+            color: #1890ff;
+            background: #e6f7ff;
+        }
+
+        tbody td .copy-btn.copied {
+            border-color: #52c41a;
+            color: #52c41a;
+            background: #f6ffed;
+        }
+
+        /* ===================== Grid View ===================== */
+        .grid-panel {
+            display: none;
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+        }
+
+        .grid-panel.active {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            align-content: start;
+        }
+
+        .contact-card {
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            padding: 16px;
+            transition: box-shadow 0.2s;
+            background: #fff;
+        }
+
+        .contact-card:hover {
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .contact-card .name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .contact-card .title {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .contact-card .info-row {
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 6px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .contact-card .info-row .label {
+            color: #999;
+            width: 70px;
+            flex-shrink: 0;
+        }
+
+        .contact-card .copy-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 6px 0;
+            border: 1px solid #e8e8e8;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #666;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .contact-card .copy-btn:hover {
+            border-color: #1890ff;
+            color: #1890ff;
+            background: #e6f7ff;
+        }
+
+        /* ===================== Pagination ===================== */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            padding: 12px 16px;
+            background: #fff;
+            border-top: 1px solid #f0f0f0;
+            flex-shrink: 0;
+        }
+
+        .pagination button {
+            padding: 5px 12px;
+            border: 1px solid #e8e8e8;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #555;
+            transition: all 0.15s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            border-color: #1890ff;
+            color: #1890ff;
+        }
+
+        .pagination button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .pagination button.active {
+            background: #1890ff;
+            color: #fff;
+            border-color: #1890ff;
+        }
+
+        .pagination .page-info {
+            margin-right: 12px;
+            color: #666;
+        }
+
+        .page-size-select {
+            padding: 4px 8px;
+            border: 1px solid #e8e8e8;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-left: 8px;
+            outline: none;
+            background: #fff;
+        }
+
+        /* ===================== Loading & Empty ===================== */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e8e8e8;
+            border-top-color: #1890ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-msg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #f5222d;
+            font-size: 14px;
+        }
+
+        .empty-msg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="breadcrumb">
+                <a href="#">首页</a>
+                <span>/</span>
+                <span class="current">我的公司</span>
+            </div>
+                <div class="top-right">
+                    <a href="index.html" class="back-link">&#8592; 返回查询</a>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="搜索姓名 / 移动电话 / 手机短号 / 邮件地址..." autocomplete="off" />
+                        <span class="search-icon">&#128269;</span>
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
+                    <select id="batchSelect" class="batch-select">
+                        <option value="">加载中...</option>
+                    </select>
+                </div>
+        </header>
+
+        <!-- Main Layout -->
+        <div class="main-layout">
+            <!-- Left Sidebar -->
+            <aside class="sidebar">
+                <div class="company-header">
+                    <div class="company-icon">&#127970;</div>
+                    <div class="company-name">江苏公司</div>
+                </div>
+                <div class="dept-tree" id="deptTree">
+                    <div class="loading"><div class="spinner"></div><br>加载部门中...</div>
+                </div>
+            </aside>
+
+            <!-- Right Content -->
+            <main class="content">
+                <div class="phone-banner" id="phoneBanner">
+                    <span>点击显示总机号码</span>
+                    <span class="arrow">&#9660;</span>
+                </div>
+                <div class="phone-numbers" id="phoneNumbers">
+                    <div class="label">总机号码</div>
+                    <div class="item">总机：025-XXXX-XXXX</div>
+                    <div class="item">传真：025-XXXX-XXXX</div>
+                </div>
+
+                <div class="info-bar">
+                    <div style="display:flex;align-items:center;">
+                        <div class="current-org">
+                            <span class="org-icon">&#128205;</span>
+                            <span>当前机构：</span>
+                            <span class="path-content" id="currentOrg">江苏公司</span>
+                        </div>
+                        <span class="stats" id="statsInfo">（共 <span class="num">0</span> 人）</span>
+                    </div>
+                    <div class="view-toggle">
+                        <button id="gridViewBtn" title="网格视图">&#9638;</button>
+                        <button id="listViewBtn" class="list-view active" title="列表视图">&#9776;</button>
+                    </div>
+                </div>
+
+                <div class="table-card" id="tableCard">
+                    <div class="table-wrapper" id="tableWrapper">
+                        <table id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>姓名</th>
+                                    <th>职务</th>
+                                    <th>移动电话</th>
+                                    <th>手机短号</th>
+                                    <th>分机</th>
+                                    <th>固话号码</th>
+                                    <th>邮件地址</th>
+                                    <th style="width:60px;">复制</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <tr><td colspan="8">
+                                    <div class="loading"><div class="spinner"></div><br>正在加载人员数据...</div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="pagination" style="display:none;">
+                        <span class="page-info" id="pageInfo"></span>
+                        <button id="prevBtn" disabled>&laquo; 上一页</button>
+                        <span id="pageNumbers"></span>
+                        <button id="nextBtn" disabled>下一页 &raquo;</button>
+                        每页
+                        <select id="pageSizeSelect" class="page-size-select">
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                        条
+                    </div>
+                </div>
+
+                <div class="grid-panel" id="gridPanel"></div>
+            </main>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let allData = [];
+        let filteredData = [];
+        let currentPage = 1;
+        let pageSize = 100;
+        let currentView = "list"; // list | grid
+        let selectedDept = null;  // selected department path
+
+        // Department tree
+        let deptTree = {};
+        let deptExpanded = new Set();
+        let deptSortMap = {};
+        let hasDeptSort = false;
+
+        const batchSelect = document.getElementById("batchSelect");
+        const searchInput = document.getElementById("searchInput");
+        const searchResults = document.getElementById("searchResults");
+        const deptTreeEl = document.getElementById("deptTree");
+        const currentOrgEl = document.getElementById("currentOrg");
+        const statsInfoEl = document.getElementById("statsInfo");
+        const tableBody = document.getElementById("tableBody");
+        const pagination = document.getElementById("pagination");
+        const pageInfo = document.getElementById("pageInfo");
+        const prevBtn = document.getElementById("prevBtn");
+        const nextBtn = document.getElementById("nextBtn");
+        const pageNumbers = document.getElementById("pageNumbers");
+        const pageSizeSelect = document.getElementById("pageSizeSelect");
+        const gridViewBtn = document.getElementById("gridViewBtn");
+        const listViewBtn = document.getElementById("listViewBtn");
+        const tableCard = document.getElementById("tableCard");
+        const gridView = document.getElementById("gridPanel");
+        const phoneBanner = document.getElementById("phoneBanner");
+        const phoneNumbers = document.getElementById("phoneNumbers");
+        const toast = document.getElementById("toast");
+
+        /* ===================== Batch ===================== */
+
+        async function loadBatchIds() {
+            try {
+                const res = await fetch("/api/company-contacts/batch_ids");
+                const data = await res.json();
+                if (data.length === 0) {
+                    batchSelect.innerHTML = '<option value="">无数据</option>';
+                    return;
+                }
+                batchSelect.innerHTML = "";
+                data.forEach(item => {
+                    const opt = document.createElement("option");
+                    opt.value = item.batch_id;
+                    opt.textContent = `${item.batch_id} (${item.count}人)`;
+                    batchSelect.appendChild(opt);
+                });
+                batchSelect.value = data[0].batch_id;
+                loadData(data[0].batch_id);
+            } catch (err) {
+                deptTreeEl.innerHTML = `<div class="error-msg">加载批次失败: ${err.message}</div>`;
+            }
+        }
+
+        batchSelect.addEventListener("change", () => {
+            if (batchSelect.value) loadData(batchSelect.value);
+        });
+
+        /* ===================== Load Data ===================== */
+
+        async function loadData(batchId) {
+            tableBody.innerHTML = '<tr><td colspan="8"><div class="loading"><div class="spinner"></div><br>正在加载人员数据...</div></td></tr>';
+            pagination.style.display = "none";
+            try {
+                const [personnelRes, deptRes] = await Promise.all([
+                    fetch(`/api/company-contacts/personnel?batch_id=${encodeURIComponent(batchId)}`),
+                    fetch(`/api/company-contacts/departments`)
+                ]);
+                const result = await personnelRes.json();
+                const deptResult = await deptRes.json();
+                if (result.error) {
+                    tableBody.innerHTML = `<tr><td colspan="8"><div class="error-msg">${result.error}</div></td></tr>`;
+                    return;
+                }
+                allData = result.data;
+                buildDeptTree(deptResult.data || []);
+                selectedDept = null;
+                deptExpanded.clear();
+                renderDeptTree();
+                applyFilter();
+            } catch (err) {
+                tableBody.innerHTML = `<tr><td colspan="8"><div class="error-msg">加载数据失败: ${err.message}</div></td></tr>`;
+            }
+        }
+
+        /* ===================== Department Tree ===================== */
+
+        function buildDeptTree(deptData) {
+            deptTree = {};
+            deptSortMap = {};
+            hasDeptSort = deptData.length > 0;
+
+            deptData.forEach(d => {
+                const path = d.dept_path || "";
+                if (!path) return;
+                deptSortMap[path] = d.sort_order != null ? d.sort_order : 9999;
+                const parts = path.split(" > ");
+                let node = deptTree;
+                parts.forEach((part, i) => {
+                    if (!node[part]) node[part] = { _sort: 9999, _children: {} };
+                    if (d.level === i + 1) node[part]._sort = d.sort_order != null ? d.sort_order : 9999;
+                    node = node[part]._children;
+                });
+            });
+        }
+
+        function getSortedChildren(node) {
+            return Object.keys(node).sort((a, b) => {
+                const sa = node[a]._sort || 9999;
+                const sb = node[b]._sort || 9999;
+                if (sa !== sb) return sa - sb;
+                return a.localeCompare(b, "zh");
+            });
+        }
+
+        function renderDeptTree() {
+            deptTreeEl.innerHTML = "";
+            const children = getSortedChildren(deptTree);
+            children.forEach(name => {
+                deptTreeEl.appendChild(renderTreeNode(name, deptTree[name], 0, []));
+            });
+        }
+
+        function renderTreeNode(name, node, level, pathParts) {
+            const currentPath = [...pathParts, name].join(" > ");
+            const hasChildren = Object.keys(node._children).length > 0;
+            const isExpanded = deptExpanded.has(currentPath);
+            const isSelected = selectedDept === currentPath;
+
+            const nodeEl = document.createElement("div");
+            nodeEl.className = "tree-node";
+
+            const row = document.createElement("div");
+            row.className = "tree-row" + (isSelected ? " selected" : "");
+            row.style.paddingLeft = (16 + level * 22) + "px";
+
+            const arrow = document.createElement("span");
+            if (hasChildren) {
+                arrow.className = "arrow has-children" + (isExpanded ? " expanded" : "");
+                arrow.innerHTML = "&#9654;";
+                arrow.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    if (isExpanded) deptExpanded.delete(currentPath);
+                    else deptExpanded.add(currentPath);
+                    renderDeptTree();
+                });
+            } else {
+                arrow.className = "arrow-placeholder";
+            }
+            row.appendChild(arrow);
+
+            const deptName = document.createElement("span");
+            deptName.className = "dept-name";
+            deptName.textContent = name;
+            row.appendChild(deptName);
+
+            row.addEventListener("click", () => {
+                selectedDept = currentPath;
+                // Expand the selected node if it has children
+                if (hasChildren) deptExpanded.add(currentPath);
+                currentPage = 1;
+                renderDeptTree();
+                applyFilter();
+            });
+
+            nodeEl.appendChild(row);
+
+            if (hasChildren && isExpanded) {
+                const childrenEl = document.createElement("div");
+                childrenEl.className = "tree-children expanded";
+                const children = getSortedChildren(node._children);
+                children.forEach(childName => {
+                    childrenEl.appendChild(renderTreeNode(childName, node._children[childName], level + 1, [...pathParts, name]));
+                });
+                nodeEl.appendChild(childrenEl);
+            }
+
+            return nodeEl;
+        }
+
+        /* ===================== Filter ===================== */
+
+        function applyFilter() {
+            filteredData = allData.filter(row => {
+                // Department filter: exact match (only direct members of the selected dept)
+                if (selectedDept && (row.dept_path || "") !== selectedDept) return false;
+                return true;
+            });
+
+            // Preserve backend order (sorted by dept_sort_key, sort_order)
+            // filteredData is already in order from allData
+
+            currentPage = 1;
+            updateCurrentOrg();
+            renderCurrentView();
+        }
+
+        function updateCurrentOrg() {
+            const parts = selectedDept ? selectedDept.split(" > ") : [];
+            const pathParts = ["江苏公司", ...parts];
+            const lastIndex = pathParts.length - 1;
+            currentOrgEl.innerHTML = pathParts.map((part, i) => {
+                const sep = i === 0 ? "" : `<span class="sep">&gt;&gt;</span>`;
+                const cls = i === lastIndex ? "current-dept" : "";
+                return `${sep}<span class="${cls}">${escapeHtml(part)}</span>`;
+            }).join("");
+            statsInfoEl.innerHTML = `（共 <span class="num">${filteredData.length}</span> 人）`;
+        }
+
+        /* ===================== Render Views ===================== */
+
+        function renderCurrentView() {
+            if (currentView === "list") {
+                renderTable();
+            } else {
+                renderGrid();
+            }
+            pagination.style.display = filteredData.length > 0 ? "flex" : "none";
+        }
+
+        function renderTable() {
+            const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const start = (currentPage - 1) * pageSize;
+            const pageData = filteredData.slice(start, start + pageSize);
+
+            if (pageData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="8"><div class="empty-msg">没有匹配的记录</div></td></tr>';
+            } else {
+                tableBody.innerHTML = pageData.map(row => {
+                    const titles = (row.title || "").split("\n").filter(t => t.trim());
+                    const titleHtml = titles.length > 0
+                        ? titles.map(t => `<span class="title-line">${escapeHtml(t)}</span>`).join("")
+                        : '<span class="empty">-</span>';
+                    const mobile = row.mobile_phone || '<span class="empty">-</span>';
+                    const short = row.short_number || '<span class="empty">-</span>';
+                    const email = row.email || '<span class="empty">-</span>';
+                    const copyText = buildCopyText(row);
+                    return `<tr>
+                        <td class="name-cell">${escapeHtml(row.name || '-')}</td>
+                        <td class="title-cell">${titleHtml}</td>
+                        <td class="phone-cell">${mobile}</td>
+                        <td class="phone-cell">${short}</td>
+                        <td class="empty">-</td>
+                        <td class="empty">-</td>
+                        <td class="email-cell" title="${escapeHtml(row.email || '')}">${email}</td>
+                        <td><button class="copy-btn" title="复制联系信息" onclick="copyToClipboard(${JSON.stringify(copyText).replace(/"/g, '&quot;')}, this)">&#128203;</button></td>
+                    </tr>`;
+                }).join("");
+            }
+
+            pageInfo.textContent = `第 ${currentPage} / ${totalPages} 页`;
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+
+            let pagesHtml = "";
+            const maxButtons = 7;
+            let startPage = Math.max(1, currentPage - 3);
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+            if (startPage > 1) {
+                pagesHtml += `<button onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) pagesHtml += `<span style="color:#999;">...</span>`;
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                pagesHtml += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) pagesHtml += `<span style="color:#999;">...</span>`;
+                pagesHtml += `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            pageNumbers.innerHTML = pagesHtml;
+        }
+
+        function renderGrid() {
+            const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+            const start = (currentPage - 1) * pageSize;
+            const pageData = filteredData.slice(start, start + pageSize);
+
+            if (pageData.length === 0) {
+                gridView.innerHTML = '<div class="empty-msg">没有匹配的记录</div>';
+            } else {
+                gridView.innerHTML = pageData.map(row => {
+                    const title = (row.title || "-").replace(/\n/g, " / ");
+                    const copyText = buildCopyText(row);
+                    return `<div class="contact-card">
+                        <div class="name">${escapeHtml(row.name || '-')}</div>
+                        <div class="title">${escapeHtml(title)}</div>
+                        <div class="info-row"><span class="label">移动电话</span><span>${escapeHtml(row.mobile_phone || '-')}</span></div>
+                        <div class="info-row"><span class="label">手机短号</span><span>${escapeHtml(row.short_number || '-')}</span></div>
+                        <div class="info-row"><span class="label">邮件地址</span><span>${escapeHtml(row.email || '-')}</span></div>
+                        <button class="copy-btn" onclick="copyToClipboard(${JSON.stringify(copyText).replace(/"/g, '&quot;')}, this)">复制联系信息</button>
+                    </div>`;
+                }).join("");
+            }
+
+            pageInfo.textContent = `第 ${currentPage} / ${totalPages} 页`;
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+
+            let pagesHtml = "";
+            const maxButtons = 7;
+            let startPage = Math.max(1, currentPage - 3);
+            let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+            if (startPage > 1) {
+                pagesHtml += `<button onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) pagesHtml += `<span style="color:#999;">...</span>`;
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                pagesHtml += `<button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) pagesHtml += `<span style="color:#999;">...</span>`;
+                pagesHtml += `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            pageNumbers.innerHTML = pagesHtml;
+        }
+
+        function buildCopyText(row) {
+            const parts = [
+                `姓名：${row.name || '-'}`
+            ];
+            if (row.title) parts.push(`职务：${row.title.replace(/\n/g, ' / ')}`);
+            if (row.mobile_phone) parts.push(`移动电话：${row.mobile_phone}`);
+            if (row.short_number) parts.push(`手机短号：${row.short_number}`);
+            if (row.email) parts.push(`邮件地址：${row.email}`);
+            return parts.join("\n");
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement("div");
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        /* ===================== Pagination ===================== */
+
+        function goToPage(page) {
+            currentPage = page;
+            renderCurrentView();
+            document.querySelector(".table-wrapper").scrollTop = 0;
+            gridView.scrollTop = 0;
+        }
+
+        prevBtn.addEventListener("click", () => { if (currentPage > 1) { currentPage--; renderCurrentView(); } });
+        nextBtn.addEventListener("click", () => { currentPage++; renderCurrentView(); });
+
+        pageSizeSelect.addEventListener("change", () => {
+            pageSize = parseInt(pageSizeSelect.value);
+            currentPage = 1;
+            renderCurrentView();
+        });
+
+        /* ===================== View Toggle ===================== */
+
+        gridViewBtn.addEventListener("click", () => {
+            currentView = "grid";
+            gridViewBtn.classList.add("active");
+            listViewBtn.classList.remove("active");
+            tableCard.style.display = "none";
+            gridView.classList.add("active");
+            renderCurrentView();
+        });
+
+        listViewBtn.addEventListener("click", () => {
+            currentView = "list";
+            listViewBtn.classList.add("active");
+            gridViewBtn.classList.remove("active");
+            gridView.classList.remove("active");
+            tableCard.style.display = "flex";
+            renderCurrentView();
+        });
+
+        /* ===================== Search Dropdown ===================== */
+
+        let searchTimer;
+        let activeResultIndex = -1;
+        let currentResults = [];
+
+        function showSearchResults(results, totalMatched) {
+            activeResultIndex = -1;
+            currentResults = results;
+            if (!results.length) {
+                searchResults.innerHTML = '<div class="no-results">未找到匹配的人员</div>';
+                searchResults.classList.add("show");
+                return;
+            }
+
+            let html = `<div class="result-header">找到 ${totalMatched} 条结果，显示前 ${results.length} 条</div>`;
+            html += results.map((row, idx) => {
+                const dept = escapeHtml(row.dept_path || '-');
+                const title = escapeHtml((row.title || '-').replace(/\n/g, ' / '));
+                const mobile = row.mobile_phone ? escapeHtml(row.mobile_phone) : '<span class="empty">-</span>';
+                const short = row.short_number ? escapeHtml(row.short_number) : '<span class="empty">-</span>';
+                const email = row.email ? escapeHtml(row.email) : '<span class="empty">-</span>';
+                return `<div class="result-item" data-index="${idx}" data-dept="${escapeHtml(row.dept_path || '')}">
+                    <div class="result-name">${escapeHtml(row.name || '-')}</div>
+                    <div class="result-dept">${dept}</div>
+                    <div class="result-title">${title}</div>
+                    <div class="result-contacts">
+                        <span title="移动电话">${mobile}</span>
+                        <span title="手机短号">${short}</span>
+                        <span title="邮件地址">${email}</span>
+                    </div>
+                </div>`;
+            }).join("");
+
+            if (totalMatched > results.length) {
+                html += `<div class="more-results">还有 ${totalMatched - results.length} 条结果，请继续输入精确关键词</div>`;
+            }
+
+            searchResults.innerHTML = html;
+            searchResults.classList.add("show");
+
+            // Click handlers
+            searchResults.querySelectorAll(".result-item").forEach(item => {
+                item.addEventListener("click", () => {
+                    const idx = parseInt(item.dataset.index, 10);
+                    navigateToPerson(currentResults[idx]);
+                });
+                item.addEventListener("mouseenter", () => {
+                    activeResultIndex = parseInt(item.dataset.index, 10);
+                    highlightActiveResult();
+                });
+            });
+        }
+
+        function highlightActiveResult() {
+            searchResults.querySelectorAll(".result-item").forEach((item, idx) => {
+                item.classList.toggle("active", idx === activeResultIndex);
+            });
+        }
+
+        function hideSearchResults() {
+            searchResults.classList.remove("show");
+            activeResultIndex = -1;
+            currentResults = [];
+        }
+
+        function navigateToPerson(row) {
+            const deptPath = row.dept_path || "";
+            if (!deptPath) return;
+
+            // Expand all ancestor nodes in the tree
+            const parts = deptPath.split(" > ");
+            let currentPath = "";
+            parts.forEach((part, i) => {
+                currentPath = i === 0 ? part : currentPath + " > " + part;
+                deptExpanded.add(currentPath);
+            });
+
+            selectedDept = deptPath;
+            searchInput.value = "";
+            hideSearchResults();
+            currentPage = 1;
+            renderDeptTree();
+
+            // Scroll tree to selected node
+            setTimeout(() => {
+                const selectedRow = deptTreeEl.querySelector(".tree-row.selected");
+                if (selectedRow) selectedRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }, 50);
+
+            applyFilter();
+
+            // Highlight the person in the table briefly
+            setTimeout(() => {
+                const cells = tableBody.querySelectorAll(".name-cell");
+                cells.forEach(cell => {
+                    if (cell.textContent === row.name) {
+                        cell.closest("tr").style.background = "#fff7e6";
+                        setTimeout(() => {
+                            cell.closest("tr").style.background = "";
+                        }, 2000);
+                    }
+                });
+            }, 100);
+        }
+
+        function performSearch() {
+            const q = searchInput.value.trim().toLowerCase();
+            if (!q) {
+                hideSearchResults();
+                return;
+            }
+
+            const matched = allData.filter(row => {
+                const haystack = [
+                    row.name, row.mobile_phone, row.short_number, row.email
+                ].join(" ").toLowerCase();
+                return haystack.includes(q);
+            });
+
+            const displayResults = matched.slice(0, 15);
+            showSearchResults(displayResults, matched.length);
+        }
+
+        searchInput.addEventListener("input", () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                performSearch();
+            }, 200);
+        });
+
+        searchInput.addEventListener("keydown", (e) => {
+            if (!searchResults.classList.contains("show")) return;
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeResultIndex = Math.min(activeResultIndex + 1, currentResults.length - 1);
+                highlightActiveResult();
+                const activeItem = searchResults.querySelector(`.result-item[data-index="${activeResultIndex}"]`);
+                if (activeItem) activeItem.scrollIntoView({ block: "nearest" });
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeResultIndex = Math.max(activeResultIndex - 1, 0);
+                highlightActiveResult();
+                const activeItem = searchResults.querySelector(`.result-item[data-index="${activeResultIndex}"]`);
+                if (activeItem) activeItem.scrollIntoView({ block: "nearest" });
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (activeResultIndex >= 0 && currentResults[activeResultIndex]) {
+                    navigateToPerson(currentResults[activeResultIndex]);
+                } else if (currentResults.length > 0) {
+                    navigateToPerson(currentResults[0]);
+                }
+            } else if (e.key === "Escape") {
+                hideSearchResults();
+            }
+        });
+
+        searchInput.addEventListener("blur", () => {
+            // Delay to allow click events on result items to fire
+            setTimeout(() => hideSearchResults(), 200);
+        });
+
+        searchInput.addEventListener("focus", () => {
+            if (searchInput.value.trim()) performSearch();
+        });
+
+        // Click search icon to perform search / select first result
+        document.querySelector(".search-icon").addEventListener("click", () => {
+            if (!searchInput.value.trim()) return;
+            if (!searchResults.classList.contains("show")) {
+                performSearch();
+            } else if (currentResults.length > 0) {
+                navigateToPerson(currentResults[0]);
+            }
+        });
+
+        // Click outside search box to hide results
+        document.addEventListener("mousedown", (e) => {
+            const searchBox = document.querySelector(".search-box");
+            if (searchBox && !searchBox.contains(e.target)) {
+                hideSearchResults();
+            }
+        });
+
+        /* ===================== Phone Banner ===================== */
+
+        phoneBanner.addEventListener("click", () => {
+            phoneNumbers.classList.toggle("show");
+            const arrow = phoneBanner.querySelector(".arrow");
+            arrow.innerHTML = phoneNumbers.classList.contains("show") ? "&#9650;" : "&#9660;";
+        });
+
+        /* ===================== Clipboard ===================== */
+
+        function copyToClipboard(text, btn) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => showCopied(btn));
+            } else {
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+                showCopied(btn);
+            }
+        }
+
+        function showCopied(btn) {
+            showToast("已复制");
+            if (btn) {
+                const original = btn.innerHTML;
+                btn.classList.add("copied");
+                btn.innerHTML = "&#10003;";
+                setTimeout(() => {
+                    btn.classList.remove("copied");
+                    btn.innerHTML = original;
+                }, 1500);
+            }
+        }
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 2000);
+        }
+
+        /* ===================== Init ===================== */
+        loadBatchIds();
+    </script>
+</body>
+</html>
